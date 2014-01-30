@@ -83,6 +83,12 @@ Ext.define('CustomApp', {
             model:'TestFolder',
             limit:'Infinity',
             fetch: true,
+            sorters: [
+                {
+                    property: 'Name',
+                    direction: 'ASC'
+                }
+            ],
             context: {
                 projectScopeDown: false,
                 projectScopeUp: false,
@@ -103,6 +109,7 @@ Ext.define('CustomApp', {
             xtype:'rallygrid',
             store: store,
             showPagingToolbar: false,
+            showRowActionsColumn: false,
             columnCfgs: [
                 {text:'id',dataIndex:'FormattedID'},
                 {text:'Test Folders',dataIndex:'Name'}
@@ -147,17 +154,17 @@ Ext.define('CustomApp', {
                 var promises = [];
                 
                 Ext.Array.each( source_folders, function(source_folder){
-                    promises.push(me._createItem(model,source_folder,me));
+                    promises.push(me._createItem(model,source_folder,{},me));
                 });
                 Deft.Promise.all(promises).then({
                     success: function(records) {
                         // result is an array of arrays
-                        var new_records_by_original_id = {};
+                        var new_records_by_original_ref = {};
                         Ext.Array.each(records, function(pair){
-                            new_records_by_original_id[pair[0].get('_ref')] = pair[1];
+                            new_records_by_original_ref[pair[0].get('_ref')] = pair[1];
                         });
                         
-                        me._setParentFolders(source_folders,new_records_by_original_id,me);
+                        me._setParentFolders(source_folders,new_records_by_original_ref,me);
                     },
                     failure: function(error) {
                         alert("There was a problem: " + error);
@@ -166,16 +173,17 @@ Ext.define('CustomApp', {
             }
         });
     },
-    _createItem: function(model,source_folder,scope){
+    _createItem: function(model,source_item,change_fields, scope){
         var deferred = Ext.create('Deft.Deferred');
         var me = scope;
-        me.logger.log(source_folder);
-        var item = source_folder.getData();
-        var record = Ext.create(model, me._cleanseItem(item));
+        me.logger.log("Create from ", source_item);
+        var item = me._cleanseItem(source_item.getData(),change_fields);
+        me.logger.log("Create as ", item);
+        var record = Ext.create(model, item );
         record.save({
             callback: function(result, operation) {
                 if(operation.wasSuccessful()) {
-                    deferred.resolve([source_folder,result]);
+                    deferred.resolve([source_item,result]);
                 } else {
                     deferred.reject("Could not save " + item['Name']);
                 }
@@ -183,7 +191,7 @@ Ext.define('CustomApp', {
         });
         return deferred.promise;
     },
-    _cleanseItem: function(original_item){
+    _cleanseItem: function(original_item,change_fields){
         var item = Ext.clone(original_item);
         // remove unnecessary fields
         delete item['ObjectID'];
@@ -201,40 +209,38 @@ Ext.define('CustomApp', {
         delete item['_refObjectName'];
         // set project
         item['Project'] = this.projects['target'].get('_ref');
-        return item;
+        
+        return Ext.Object.merge(item, change_fields);;
     },
-    _setParentFolders: function(source_folders,new_records_by_original_id,scope){  
+    _setParentFolders: function(source_folders,new_records_by_original_ref,scope){  
         var me = scope;
-        me.logger.log("_setParentFolders",source_folders,new_records_by_original_id);
+        me.logger.log("_setParentFolders",source_folders,new_records_by_original_ref);
         var promises = [];
         Ext.Array.each( source_folders, function(source_folder){
-            promises.push(me._setParentFolder(source_folder,new_records_by_original_id,me));
+            promises.push(me._setParentFolder(source_folder,new_records_by_original_ref,me));
         });
         Deft.Promise.all(promises).then({
             success: function(records) {
                 me.logger.log("done with set parent folder promises");
-                me._showTestFolders(me.projects['target'],me.down('#target_folder_box'),'target');
-                me.setLoading(false);
+                me._copyTestCases(source_folders,new_records_by_original_ref,me);
             },
             failure: function(error) {
                 alert("There was a problem: " + error);
             }
         });
-
     },
-    _setParentFolder: function(original_record,new_records_by_original_id,scope){
+    _setParentFolder: function(original_record,new_records_by_original_ref,scope){
         var me = scope;
         me.logger.log("_setParentFolder",original_record);
+        this.setLoading("Setting Parent Folders");
         var deferred = Ext.create('Deft.Deferred');
         var original_parent = original_record.get('Parent');
         var original_ref = original_record.get('_ref');
-        var record = new_records_by_original_id[original_ref];
+        var record = new_records_by_original_ref[original_ref];
         if ( record && original_parent ) {
             me.logger.log("Original Parent", original_parent);
             var original_parent_ref = original_parent._ref;
-            var new_parent = new_records_by_original_id[original_parent_ref];
-            me.logger.log("New Parent ", new_parent);
-            me.logger.log("Record ", record);
+            var new_parent = new_records_by_original_ref[original_parent_ref];
             if ( new_parent ) {
                 record.set("Parent",new_parent.get('ObjectID'));
             }
@@ -253,6 +259,64 @@ Ext.define('CustomApp', {
             deferred.resolve([]);
         }
         
+        return deferred.promise;
+    },
+    _copyTestCases: function(source_folders,new_records_by_original_ref,me){
+        me.logger.log('_copyTestCases ',source_folders);
+        me.setLoading("Copy Test Cases");
+        var promises = [];
+        Rally.data.ModelFactory.getModel({
+            type: 'TestCase',
+            success: function(model) {
+                Ext.Array.each( source_folders, function(source_folder){
+                    me.logger.log(" TCs", source_folder.get('TestCases').Count);
+                    if ( source_folder.get('TestCases').Count > 0 ) {
+                        promises.push(me._copyTestCasesForFolder(source_folder,new_records_by_original_ref[source_folder.get('_ref')],model, me));
+                    }
+                });
+                if ( promises.length === 0 ) {
+                    me.logger.log("No test cases to copy");
+                    me._showTestFolders(me.projects['target'],me.down('#target_folder_box'),'target');
+                    me.setLoading(false);
+                } else {
+                    Deft.Promise.all(promises).then({
+                        success: function(records) {
+                            me.logger.log("done with copy test case promises");
+                            me._showTestFolders(me.projects['target'],me.down('#target_folder_box'),'target');
+                            me.setLoading(false);
+                        },
+                        failure: function(error) {
+                            alert("There was a problem: " + error);
+                            me._showTestFolders(me.projects['target'],me.down('#target_folder_box'),'target');
+                            me.setLoading(false);
+                        }
+                    });
+                }
+            }
+        });
+    },
+    _copyTestCasesForFolder: function(source_folder, target_folder, model, scope) {
+        var me = scope;
+        var deferred = Ext.create('Deft.Deferred');
+        source_folder.getCollection('TestCases').load({
+            fetch: true,
+            callback: function(testcases, operation, success) {
+                me.logger.log("Test Cases: ", testcases);
+                var promises = [];
+                Ext.Array.each(testcases, function(testcase) {
+                    me.logger.log("FormattedID: ", testcase.get('FormattedID'));
+                    promises.push(me._createItem(model,testcase,{ TestFolder: target_folder.get('ObjectID') }, me));
+                });
+                Deft.Promise.all(promises).then({
+                    success: function(records){
+                        deferred.resolve(testcases);
+                    },
+                    failure: function(error) {
+                        deferred.reject(error);
+                    }
+                });
+            }
+        });
         return deferred.promise;
     }
 });

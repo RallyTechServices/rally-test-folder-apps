@@ -20,7 +20,7 @@ Ext.define('Rally.technicalservices.InfoLink',{
      */
      title: "Information",
     
-    renderTpl: "<div id='{id}-infolinkWrap' class='tsinfolink'>TS</div>",
+    renderTpl: "<div id='{id}-infolinkWrap' class='tsinfolink'>.</div>",
 
     initComponent: function() {
         this.callParent(arguments);
