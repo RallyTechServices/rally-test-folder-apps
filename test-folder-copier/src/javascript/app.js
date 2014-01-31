@@ -31,13 +31,17 @@ Ext.define('CustomApp', {
             xtype:'rallybutton',
             itemId:'clear_button',
             text:'Clear Target & Copy',
-            disabled: true
+            scope: this,
+            disabled: true,
+            handler: this._clearAndCopyFolders
         });
         this.down('#button_box').add({
             xtype:'rallybutton',
             text:'Add to Target',
             itemId:'add_button',
-            disabled: true
+            disabled: true,
+            scope: this,
+            handler: this._copyFolders
         });
     },
     _addProjectSelectors:function(source_container,target_container) {
@@ -136,6 +140,9 @@ Ext.define('CustomApp', {
                 }
             }
         }
+    },
+    _clearAndCopyFolders: function() {
+        alert("not implemented yet");
     },
     _copyFolders: function() {
         var me = this;

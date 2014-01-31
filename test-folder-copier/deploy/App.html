@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Jan 30 2014 17:12:02 GMT-0800 (PST) -->
+    <!--  Build Date: Thu Jan 30 2014 17:18:31 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Jan 30 2014 17:12:02 GMT-0800 (PST)";
-        var CHECKSUM = 16323571749;
+        var APP_BUILD_DATE = "Thu Jan 30 2014 17:18:31 GMT-0800 (PST)";
+        var CHECKSUM = 16666495146;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -170,13 +170,17 @@ Ext.define('CustomApp', {
             xtype:'rallybutton',
             itemId:'clear_button',
             text:'Clear Target & Copy',
-            disabled: true
+            scope: this,
+            disabled: true,
+            handler: this._clearAndCopyFolders
         });
         this.down('#button_box').add({
             xtype:'rallybutton',
             text:'Add to Target',
             itemId:'add_button',
-            disabled: true
+            disabled: true,
+            scope: this,
+            handler: this._copyFolders
         });
     },
     _addProjectSelectors:function(source_container,target_container) {
@@ -275,6 +279,9 @@ Ext.define('CustomApp', {
                 }
             }
         }
+    },
+    _clearAndCopyFolders: function() {
+        alert("not implemented yet");
     },
     _copyFolders: function() {
         var me = this;
