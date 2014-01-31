@@ -142,7 +142,57 @@ Ext.define('CustomApp', {
         }
     },
     _clearAndCopyFolders: function() {
-        alert("not implemented yet");
+        var target_project = this.projects['target'].get('_ref');
+        this.setLoading("Removing Folders...");
+        Ext.create('Rally.data.wsapi.Store',{
+            model:'TestFolder',
+            context: {
+                projectScopeDown: false,
+                projectScopeUp: false,
+                project: target_project
+            },
+            autoLoad: true,
+            listeners: {
+                scope: this,
+                load: function(store,folders){
+                    var me = this;
+                    var promises = [];
+                    var number_of_folders = folders.length;
+                    for ( var i=0;i<number_of_folders;i++ ) {
+                        var f = function() {
+                            var folder = folders[0];
+                            folders.shift();
+                            return me._deleteItem(folder, me);
+                        };
+                        promises.push(f);
+                    }
+                    Deft.Chain.sequence(promises).then({
+                        success: function(records){                        
+                            me._copyFolders();
+                        },
+                        failure: function(error) {
+                            alert(error);
+                        }
+                    });
+                }
+            }
+        });
+    },
+    _deleteItem: function(item, scope){
+        var deferred = Ext.create('Deft.Deferred');
+        var me = scope;
+        me.logger.log("Delete from ", item.get('FormattedID'));
+        item.destroy({
+            callback: function(result, operation) {
+                if(operation.wasSuccessful()) {
+                    deferred.resolve([]);
+                } else {
+                    var message = item['Name'];
+                    deferred.reject("Could not destroy " + message);
+                }
+            }
+        });
+        return deferred.promise;
     },
     _copyFolders: function() {
         var me = this;
@@ -405,7 +455,6 @@ Ext.define('CustomApp', {
                     };
                     promises.push(f);
                 }
-                me.logger.log(" --- About to sequence");
                 Deft.Chain.sequence(promises).then({
                     success: function(records){                        
                         deferred.resolve(records);
