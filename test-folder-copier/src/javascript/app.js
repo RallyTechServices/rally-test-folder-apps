@@ -185,7 +185,11 @@ Ext.define('CustomApp', {
                 if(operation.wasSuccessful()) {
                     deferred.resolve([source_item,result]);
                 } else {
-                    deferred.reject("Could not save " + item['Name']);
+                    var message = model.getName();
+                    if ( item['Name'] ) {
+                        message = item['Name'];
+                    }
+                    deferred.reject("Could not save " + message);
                 }
             }
         });
@@ -202,6 +206,10 @@ Ext.define('CustomApp', {
         delete item['Subscription'];
         delete item['TestCases'];
         delete item['Workspace'];
+        delete item['creatable'];
+        delete item['updatable'];
+        delete item['deletable'];
+        delete item['_type'];
         delete item['_CreatedAt'];
         delete item['_objectVersion'];
         delete item['_p'];
@@ -265,6 +273,7 @@ Ext.define('CustomApp', {
         me.logger.log('_copyTestCases ',source_folders);
         me.setLoading("Copy Test Cases");
         var promises = [];
+        var source_testcases = [];
         Rally.data.ModelFactory.getModel({
             type: 'TestCase',
             success: function(model) {
@@ -276,40 +285,123 @@ Ext.define('CustomApp', {
                 });
                 if ( promises.length === 0 ) {
                     me.logger.log("No test cases to copy");
-                    me._showTestFolders(me.projects['target'],me.down('#target_folder_box'),'target');
-                    me.setLoading(false);
+                    me._finishAndRedisplay(me);
                 } else {
                     Deft.Promise.all(promises).then({
-                        success: function(records) {
+                        success: function(record_sets) {
+                            var pairs = [];
+                            Ext.Array.each(record_sets, function(received_pairs){
+                                Ext.Array.each(received_pairs, function(pair){
+                                    pairs.push(pair);
+                                });
+                            });
                             me.logger.log("done with copy test case promises");
-                            me._showTestFolders(me.projects['target'],me.down('#target_folder_box'),'target');
-                            me.setLoading(false);
+                            me._copySteps(pairs,me);
                         },
                         failure: function(error) {
                             alert("There was a problem: " + error);
-                            me._showTestFolders(me.projects['target'],me.down('#target_folder_box'),'target');
-                            me.setLoading(false);
+                            me._finishAndRedisplay(me);
                         }
                     });
                 }
             }
         });
     },
+    _finishAndRedisplay: function(scope) {
+        scope._showTestFolders(scope.projects['target'],scope.down('#target_folder_box'),'target');
+        scope.setLoading(false);
+    },
     _copyTestCasesForFolder: function(source_folder, target_folder, model, scope) {
         var me = scope;
         var deferred = Ext.create('Deft.Deferred');
-        source_folder.getCollection('TestCases').load({
+        Ext.create('Rally.data.wsapi.Store',{
+            model: 'TestCase',
+            filters: [{property:'TestFolder.ObjectID',value:source_folder.get('ObjectID')}],
             fetch: true,
-            callback: function(testcases, operation, success) {
-                me.logger.log("Test Cases: ", testcases);
-                var promises = [];
-                Ext.Array.each(testcases, function(testcase) {
-                    me.logger.log("FormattedID: ", testcase.get('FormattedID'));
-                    promises.push(me._createItem(model,testcase,{ TestFolder: target_folder.get('ObjectID') }, me));
+            autoLoad: true,
+            context: {
+                project: null
+            },
+            listeners: {
+                scope: me,
+                load: function(store,testcases) {
+                    me.logger.log("Test Cases: ", testcases);
+                    var promises = [];
+                    Ext.Array.each(testcases, function(testcase) {
+                        me.logger.log("FormattedID: ", testcase.get('FormattedID'));
+                        promises.push(me._createItem(model,testcase,{ TestFolder: target_folder.get('ObjectID') }, me));
+                    });
+                    Deft.Promise.all(promises).then({
+                        success: function(records){                        
+                            deferred.resolve(records);
+                        },
+                        failure: function(error) {
+                            deferred.reject(error);
+                        }
+                    });
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    _copySteps: function(pairs,me){
+        me.logger.log("_copySteps", pairs);
+        me.setLoading("Copying Test Steps");
+        var promises = [];
+        Rally.data.ModelFactory.getModel({
+            type: 'TestCaseStep',
+            success: function(model) {
+                Ext.Array.each(pairs, function(pair){
+                    var source_testcase = pair[0];
+                    var target_testcase = pair[1];
+                    me.logger.log(source_testcase.get('Steps').Count);
+                    if ( source_testcase.get('Steps').Count > 0 ) {
+                        promises.push(me._copyStepsForTestCase(model, source_testcase, target_testcase, me));
+                    }
                 });
-                Deft.Promise.all(promises).then({
-                    success: function(records){
-                        deferred.resolve(testcases);
+                if ( promises.length == 0 ) {
+                    me.logger.log("No test case steps");
+                    me._finishAndRedisplay(me);
+                } else {
+                    me.logger.log("ALL promises ready");
+                    Deft.Promise.all(promises).then({
+                        success: function(results) {
+                            me.logger.log("done with copy test case step promises");
+                            //me._copySteps(pairs,me);
+                            me._finishAndRedisplay(me);
+                        },
+                        failure: function(error) {
+                            alert("There was a problem: " + error);
+                            me._finishAndRedisplay(me);
+                        }
+                    });
+                }
+            }
+        });
+    },
+    _copyStepsForTestCase: function(model, source_testcase, target_testcase, me){
+        var deferred = Ext.create('Deft.Deferred');
+        me.logger.log("_copyStepsForTestCase");
+        source_testcase.getCollection('Steps').load({
+            fetch: true,
+            callback: function(steps, operation, success) {
+                me.logger.log("Steps: ", steps);
+                var promises = [];
+                var number_of_steps = steps.length;
+                // slow down the creation a bit
+                for ( var i=0;i<number_of_steps;i++ ) {
+                    var step_array = steps;
+                    var f = function() {
+                        var step = step_array[0];
+                        step_array.shift();
+                        return me._createItem(model,step,{ TestCase: target_testcase.get('ObjectID') }, me);
+                    };
+                    promises.push(f);
+                }
+                me.logger.log(" --- About to sequence");
+                Deft.Chain.sequence(promises).then({
+                    success: function(records){                        
+                        deferred.resolve(records);
                     },
                     failure: function(error) {
                         deferred.reject(error);
@@ -319,4 +411,5 @@ Ext.define('CustomApp', {
         });
         return deferred.promise;
     }
+
 });
