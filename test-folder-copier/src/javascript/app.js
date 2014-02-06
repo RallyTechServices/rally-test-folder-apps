@@ -353,7 +353,15 @@ Ext.define('CustomApp', {
                                 });
                             });
                             me.logger.log("done with copy test case promises");
-                            me._copySteps(pairs,me);
+                            me._copySteps(pairs,me).then({
+                                success: function(results){
+                                    me._copyAttachments(pairs,me);
+                                },
+                                failure: function(error){
+                                    alert("There was a problem: " + error);
+                                }
+                            });
+                            
                         },
                         failure: function(error) {
                             alert("There was a problem: " + error);
@@ -404,6 +412,8 @@ Ext.define('CustomApp', {
     _copySteps: function(pairs,me){
         me.logger.log("_copySteps", pairs);
         me.setLoading("Copying Test Steps");
+        var deferred = Ext.create('Deft.Deferred');
+
         var promises = [];
         Rally.data.ModelFactory.getModel({
             type: 'TestCaseStep',
@@ -424,6 +434,40 @@ Ext.define('CustomApp', {
                     Deft.Promise.all(promises).then({
                         success: function(results) {
                             me.logger.log("done with copy test case step promises");
+                            //me._copySteps(pairs,me);
+                             deferred.resolve(results);
+                        },
+                        failure: function(error) {
+                            deferred.reject(error);
+                        }
+                    });
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    _copyAttachments: function(pairs,me){
+        me.logger.log("_copyAttachments", pairs);
+        me.setLoading("Copying Attachments");
+        var promises = [];
+        Rally.data.ModelFactory.getModel({
+            type: 'Attachment',
+            success: function(model) {
+                Ext.Array.each(pairs, function(pair){
+                    var source_testcase = pair[0];
+                    var target_testcase = pair[1];
+                    if ( source_testcase.get('Attachments').Count > 0 ) {
+                        promises.push(me._copyAttachmentsForTestCase(model, source_testcase, target_testcase, me));
+                    }
+                });
+                if ( promises.length == 0 ) {
+                    me.logger.log("No test case attachments");
+                    me._finishAndRedisplay(me);
+                } else {
+                    me.logger.log("ALL promises ready");
+                    Deft.Promise.all(promises).then({
+                        success: function(results) {
+                            me.logger.log("done with copy test case attachment promises");
                             //me._copySteps(pairs,me);
                             me._finishAndRedisplay(me);
                         },
@@ -452,6 +496,37 @@ Ext.define('CustomApp', {
                         var step = step_array[0];
                         step_array.shift();
                         return me._createItem(model,step,{ TestCase: target_testcase.get('ObjectID') }, me);
+                    };
+                    promises.push(f);
+                }
+                Deft.Chain.sequence(promises).then({
+                    success: function(records){                        
+                        deferred.resolve(records);
+                    },
+                    failure: function(error) {
+                        deferred.reject(error);
+                    }
+                });
+            }
+        });
+        return deferred.promise;
+    },
+    _copyAttachmentsForTestCase: function(model, source_testcase, target_testcase, me){
+        var deferred = Ext.create('Deft.Deferred');
+        me.logger.log("_copyAttachmentsForTestCase");
+        source_testcase.getCollection('Attachments').load({
+            fetch: true,
+            callback: function(attachments, operation, success) {
+                me.logger.log("Attachments: ", attachments);
+                var promises = [];
+                var number_of_items = attachments.length;
+                // slow down the creation a bit
+                for ( var i=0;i<number_of_items;i++ ) {
+                    var item_array = attachments;
+                    var f = function() {
+                        var item = item_array[0];
+                        item_array.shift();
+                        return me._createItem(model,item,{ Artifact: target_testcase.get('ObjectID') }, me);
                     };
                     promises.push(f);
                 }
