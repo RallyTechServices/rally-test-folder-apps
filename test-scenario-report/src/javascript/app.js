@@ -3,7 +3,7 @@ Ext.define('CustomApp', {
     componentCls: 'app',
     columns: [
         {dataIndex:'FormattedID',text:'id'},
-        {dataIndex:'Name',text:'Name'}
+        {dataIndex:'Name',text:'Name',flex:1}
     ],
     logger: new Rally.technicalservices.Logger(),
     defaults: { padding: 5, margin: 5 },
@@ -27,7 +27,9 @@ Ext.define('CustomApp', {
             this.down('#message_box').update("Select 'Edit App Settings' from the gear menu to select a field to represent Scenario IDs");
         } else {
             this.logger.log("Field Name: ",scenario_id_field_name);
-            this.columns.push({dataIndex:scenario_id_field_name,text:'Scenario'});
+            
+            this.columns.push({dataIndex:scenario_id_field_name,text:'Scenario ID'});
+            
             var fetch = this._getFetchFields();
             this.setLoading("Fetching Test Cases");
             var wsapi_store = Ext.create('Rally.data.wsapi.Store',{
@@ -60,6 +62,11 @@ Ext.define('CustomApp', {
             records_by_scenario_id[id_value].push(record);
         });
         filtered_records = records_by_scenario_id["None"];
+        Ext.Object.each(records_by_scenario_id,function(key,collection){
+            if (key !== "None" && collection.length > 1 ) {
+                filtered_records = Ext.Array.push(filtered_records,collection);
+            }
+        });
         return filtered_records;
     },
     _makeGrid: function(test_cases){
@@ -74,7 +81,7 @@ Ext.define('CustomApp', {
             columnCfgs:me.columns,
             store:store,
             enableRanking: false,
-            toolbarCfg: {
+            pagingToolbarCfg: {
                 store: store
             }
         });
