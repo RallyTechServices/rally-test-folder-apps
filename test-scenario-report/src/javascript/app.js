@@ -71,8 +71,11 @@ Ext.define('CustomApp', {
     },
     _makeGrid: function(test_cases){
         var me = this;
+        var scenario_id_field_name = this.getSetting('scenario_id_field_name');
+
         var store = Ext.create('Rally.data.custom.Store',{
-            data:test_cases
+            data:test_cases,
+            sorters: [{property:scenario_id_field_name,direction:'DESC'}]
         });
         
         this.down('#grid_box').removeAll();

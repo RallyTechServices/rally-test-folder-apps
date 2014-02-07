@@ -3,11 +3,11 @@
 <head>
     <title>Test Scenarios</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Feb 06 2014 18:39:28 GMT-0800 (PST) -->
+    <!--  Build Date: Thu Feb 06 2014 18:44:28 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Feb 06 2014 18:39:28 GMT-0800 (PST)";
-        var CHECKSUM = 5201472508;
+        var APP_BUILD_DATE = "Thu Feb 06 2014 18:44:28 GMT-0800 (PST)";
+        var CHECKSUM = 5354176814;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -281,8 +281,11 @@ Ext.define('CustomApp', {
     },
     _makeGrid: function(test_cases){
         var me = this;
+        var scenario_id_field_name = this.getSetting('scenario_id_field_name');
+
         var store = Ext.create('Rally.data.custom.Store',{
-            data:test_cases
+            data:test_cases,
+            sorters: [{property:scenario_id_field_name,direction:'DESC'}]
         });
         
         this.down('#grid_box').removeAll();
