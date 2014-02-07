@@ -1,7 +1,10 @@
 Ext.define('CustomApp', {
     extend: 'Rally.app.App',
     componentCls: 'app',
-
+    columns: [
+        {dataIndex:'FormattedID',text:'id'},
+        {dataIndex:'Name',text:'Name'}
+    ],
     logger: new Rally.technicalservices.Logger(),
     defaults: { padding: 5, margin: 5 },
     items: [
@@ -24,7 +27,64 @@ Ext.define('CustomApp', {
             this.down('#message_box').update("Select 'Edit App Settings' from the gear menu to select a field to represent Scenario IDs");
         } else {
             this.logger.log("Field Name: ",scenario_id_field_name);
+            this.columns.push({dataIndex:scenario_id_field_name,text:'Scenario'});
+            var fetch = this._getFetchFields();
+            this.setLoading("Fetching Test Cases");
+            var wsapi_store = Ext.create('Rally.data.wsapi.Store',{
+                model:'TestCase',
+                autoLoad:true,
+                limit:'Infinity',
+                fetch:fetch,
+                listeners: {
+                    scope: this,
+                    load: function(store,test_cases){
+                        this.logger.log("Found " + test_cases.length + " test cases");
+                        var filtered_cases = this._getDuplicatesAndEmpties(test_cases);
+                        this.setLoading(false);
+                        this._makeGrid(filtered_cases);
+                    }
+                }
+            });
         }
+    },
+    _getDuplicatesAndEmpties: function(records){
+        var filtered_records = [];
+        var scenario_id_field_name = this.getSetting('scenario_id_field_name');
+        
+        var records_by_scenario_id = {};
+        Ext.Array.each(records,function(record){
+            var id_value = record.get(scenario_id_field_name) || "None";
+            if (!records_by_scenario_id[id_value]) {
+                records_by_scenario_id[id_value] = [];
+            }
+            records_by_scenario_id[id_value].push(record);
+        });
+        filtered_records = records_by_scenario_id["None"];
+        return filtered_records;
+    },
+    _makeGrid: function(test_cases){
+        var me = this;
+        var store = Ext.create('Rally.data.custom.Store',{
+            data:test_cases
+        });
+        
+        this.down('#grid_box').removeAll();
+        this.down('#grid_box').add({
+            xtype:'rallygrid',
+            columnCfgs:me.columns,
+            store:store,
+            enableRanking: false,
+            toolbarCfg: {
+                store: store
+            }
+        });
+    },
+    _getFetchFields: function(){
+        var fetch = [];
+        Ext.Array.each(this.columns,function(column){
+            fetch.push(column.dataIndex);
+        });
+        return fetch;
     },
     getSettingsFields: function() {
         return [{
