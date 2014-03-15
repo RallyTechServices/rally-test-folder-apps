@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Feb 06 2014 10:03:51 GMT-0800 (PST) -->
+    <!--  Build Date: Fri Mar 14 2014 19:35:16 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Feb 06 2014 10:03:51 GMT-0800 (PST)";
-        var CHECKSUM = 24964615029;
+        var APP_BUILD_DATE = "Fri Mar 14 2014 19:35:16 GMT-0700 (PDT)";
+        var CHECKSUM = 41134543827;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -116,6 +116,49 @@ Ext.define('Rally.technicalservices.InfoLink',{
     }
 });
 
+Ext.define('Rally.technicalservices.TestFolderTreeItem', {
+    extend: 'Rally.ui.tree.TreeItem',
+    alias: 'widget.tstestfoldertreeitem',
+
+    config: {
+        displayedFields: ['Name']
+    },
+
+    getContentTpl: function(){
+        var me = this;
+
+        return Ext.create('Ext.XTemplate',
+                    '<tpl if="this.canDrag()"><div class="icon drag"></div></tpl>',
+                    '{[this.getActionsGear()]}',
+                    '<div class="textContent ellipses">{[this.getFormattedId()]} - {Name}</div>',
+                    /*'<div class="rightSide">',
+                        '{[this.getScheduleState(values)]}',
+                    '</div>',*/
+                {
+                    canDrag: function(){
+                        return me.getCanDrag();
+                    },
+                    getActionsGear: function(){
+                        return me._buildActionsGearHtml();
+                    },
+                    getScheduleState: function(){
+                        //return Rally.ui.renderer.RendererFactory.renderRecordField(me.getRecord(), 'ScheduleState');
+                        return ""
+                    },
+                    getFormattedId: function(){
+                        //return Rally.ui.renderer.RendererFactory.renderRecordField(me.getRecord(), 'FormattedID');
+                        return me.getRecord().get('FormattedID');
+                    }
+                }
+        );
+    },
+    _buildActionsGearHtml: function(){
+//        var hasPermissions = this.getRecord().get('creatable') || this.getRecord().get('updatable') || this.getRecord().get('deletable');
+//        return hasPermissions? '<div class="row-action icon"></div>': '';
+        return '';
+    }
+
+});
 /*
  */
 Ext.define('Rally.technicalservices.Logger',{
@@ -137,6 +180,174 @@ Ext.define('Rally.technicalservices.Logger',{
 
 });
 
+/**
+ *
+ * A tree of test folders
+ *
+ *      @example
+ *      Ext.create('Ext.Container', {
+ *          items: [{
+ *              xtype: 'tstestfoldertree'
+ *          }],
+ *          renderTo: Ext.getBody().dom
+ *      });
+ */
+Ext.define('Rally.technicalservices.TestFolderTree', {
+    extend: 'Rally.ui.tree.Tree',
+    alias: 'widget.tstestfoldertree',
+    requires: [
+        'Rally.technicalservices.TestFolderTreeItem',
+        'Rally.data.util.ArtifactParentAttributeHelper'
+    ],
+
+    constructor: function(config){
+
+        config = Ext.Object.merge({
+            topLevelModel:'TestFolder',
+            childModelTypeForRecordFn: this.childModelTypeForRecordFn,
+            givenAParentRecordWhatIsTheAttributeConnectingAChildToThisParentFn: Rally.data.util.ArtifactParentAttributeHelper.parentAttributeForChildRecordOf,
+            givenAChildRecordWhatIsTheAttributeConnectingItToTheParentFn: this.givenAChildRecordWhatIsTheAttributeConnectingItToTheParent,
+            givenAChildAndParentRecordWhatAttributeShouldConnectTheChildToTheParentFn: this.givenAChildAndParentRecordWhatAttributeShouldConnectTheChildToTheParent,
+            canExpandFn: this.canExpandItem,
+            enableDragAndDrop: true,
+            dragDropGroupFn: this.dragDropGroup,
+            dragThisGroupOnMeFn: this.dragThisGroupOnMe,
+            scope: this,
+            treeItemConfigForRecordFn: this.treeItemConfigForRecordFn,
+            listeners: {
+                beforerecordsaved: this.beforeRecordSaved
+            },
+            topLevelStoreConfig: {
+                fetch:['TestCases','Children','FormattedID','Name']
+            }
+        }, config);
+
+        this.callParent([config]);
+    },
+
+    treeItemConfigForRecordFn: function(record){
+        var config = {
+            selectable: false,
+            canDrag: false
+        };
+
+        if(this._isTestFolder(record)){
+            config.xtype = 'tstestfoldertreeitem';
+        } else {
+            config.xtype = 'rallytreeitem';
+        }
+
+        return config;
+    },
+
+    beforeRecordSaved: function(record, newParentRecord){
+//        if(this._isTestFolder(record)){
+//            if(this._isTestFolder(newParentRecord)){
+//                record.set('PortfolioItem', '');
+//            } else {
+//                record.set('Parent', '');
+//            }
+//        }
+    },
+
+    _isTestFolder: function(record) {
+        return record.get('_type') === 'testfolder';
+    },
+
+    _isTestCase: function(record) {
+        return record.get('_type') === 'testcase';
+    },
+
+    childModelTypeForRecordFn: function(record){
+
+        if(this._isTestFolder(record)){
+            return 'TestFolder';
+//            if(this._testFolderHasTestCases(record)){
+//                return 'TestCase';
+//            } else {
+//                return 'TestFolder';
+//            }
+        }
+        return null;
+
+    },
+
+    givenAChildAndParentRecordWhatAttributeShouldConnectTheChildToTheParent: function(childRecord, parentRecord){
+        if(this._isTestCase(childRecord)){
+            return 'TestFolder';
+        } else {
+            return 'Parent';
+        }
+    },
+
+    givenAChildRecordWhatIsTheAttributeConnectingItToTheParent: function (childRecord) {
+        if(this._isTestCase(childRecord)){
+            return 'TestFolder';
+        } else {
+            return 'Parent';
+        }
+    },
+
+    canExpandItem: function(record){
+        // return this._testFolderHasChildren(record) || this._testFolderHasTestCases(record);
+        return this._testFolderHasChildren(record);
+    },
+
+    dragDropGroup: function(record){
+        return Rally.util.Ref.getOidFromRef(record.get('Workspace')._ref) + '-' + record.get('_type').toLowerCase();
+    },
+
+    dragThisGroupOnMe: function(record){
+        var workspace = Rally.util.Ref.getOidFromRef(record.get('Workspace')._ref);
+
+        if(this._isTestCase(record)){
+            return [];
+        }
+
+        if(this._isTestFolder(record)){
+            if(this._testFolderHasTestCases(record)){
+                return workspace + '-' + 'testcase';
+            } else if(this._testFolderHasChildren){
+                return workspace + '-' + 'testfolder';
+            } else {
+                return [
+                    workspace + '-' + 'testcase',
+                    workspace + '-' + 'testfolder'
+                ];
+            }
+        }
+
+    },
+
+    _onObjectCreate: function(record){
+        this.callParent(arguments);
+    },
+
+    _testFolderHasTestCases: function(record){
+        var has_cases = false;
+        if ( record.get('TestCases') && record.get('TestCases').Count ) {
+            if ( record.get('TestCases').Count > 0 ) {
+                has_cases = true;
+            }
+        }
+        return has_cases;
+    },
+    
+    _testFolderHasChildren: function(record) {
+        var has_kids = false;
+        if ( record.get('Children') && record.get('Children').Count ) {
+            if ( record.get('Children').Count > 0 ) {
+                has_kids = true;
+            }
+        }
+        return has_kids;
+    },
+    
+    _getChildTypeFetchFields: function(parentFieldName) {
+        //return this._getDefaultTopLevelFetchFields().concat([parentFieldName, 'WorkProduct', 'Project']);
+        return this.config.topLevelStoreConfig.fetch.concat([parentFieldName, 'WorkProduct', 'Project']);
+    }
+});
 Ext.define('CustomApp', {
     extend: 'Rally.app.App',
     componentCls: 'app',
@@ -228,7 +439,7 @@ Ext.define('CustomApp', {
             fetch: true,
             sorters: [
                 {
-                    property: 'Name',
+                    property: 'ObjectID',
                     direction: 'ASC'
                 }
             ],
@@ -240,9 +451,19 @@ Ext.define('CustomApp', {
             listeners: {
                 scope: this,
                 load: function(store,records){
-                    this._addGrid(store,container,direction);
+                    //this._addGrid(store,container,direction);
+                    this._addTree(store,container,direction);
                     this._updateButtonStates();
                 }
+            }
+        });
+    },
+    _addTree: function(store,container,direction) {
+        container.removeAll();
+        container.add({
+            xtype: 'tstestfoldertree',
+            topLevelStoreConfig: {
+                context: store.context
             }
         });
     },
@@ -350,6 +571,7 @@ Ext.define('CustomApp', {
                 var promises = [];
                 
                 Ext.Array.each( source_folders, function(source_folder){
+                    me.logger.log("Promise for ", source_folder.get('FormattedID'));
                     promises.push(me._createItem(model,source_folder,{},me));
                 });
                 Deft.Promise.all(promises).then({

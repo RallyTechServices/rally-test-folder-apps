@@ -89,7 +89,7 @@ Ext.define('CustomApp', {
             fetch: true,
             sorters: [
                 {
-                    property: 'Name',
+                    property: 'ObjectID',
                     direction: 'ASC'
                 }
             ],
@@ -101,9 +101,19 @@ Ext.define('CustomApp', {
             listeners: {
                 scope: this,
                 load: function(store,records){
-                    this._addGrid(store,container,direction);
+                    //this._addGrid(store,container,direction);
+                    this._addTree(store,container,direction);
                     this._updateButtonStates();
                 }
+            }
+        });
+    },
+    _addTree: function(store,container,direction) {
+        container.removeAll();
+        container.add({
+            xtype: 'tstestfoldertree',
+            topLevelStoreConfig: {
+                context: store.context
             }
         });
     },
@@ -211,6 +221,7 @@ Ext.define('CustomApp', {
                 var promises = [];
                 
                 Ext.Array.each( source_folders, function(source_folder){
+                    me.logger.log("Promise for ", source_folder.get('FormattedID'));
                     promises.push(me._createItem(model,source_folder,{},me));
                 });
                 Deft.Promise.all(promises).then({
