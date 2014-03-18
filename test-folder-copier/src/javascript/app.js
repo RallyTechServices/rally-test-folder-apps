@@ -222,9 +222,16 @@ Ext.define('CustomApp', {
                 
                 Ext.Array.each( source_folders, function(source_folder){
                     me.logger.log("Promise for ", source_folder.get('FormattedID'));
-                    promises.push(me._createItem(model,source_folder,{},me));
+                    // change so it can be sequenced (to prevent collisions)
+                    var f = function() {
+//                        var step = step_array[0];
+//                        step_array.shift();
+                        return me._createItem(model,source_folder,{},me);
+                    };
+                    
+                    promises.push(f);
                 });
-                Deft.Promise.all(promises).then({
+                Deft.Chain.sequence(promises).then({
                     success: function(records) {
                         // result is an array of arrays
                         var new_records_by_original_ref = {};
@@ -405,9 +412,14 @@ Ext.define('CustomApp', {
                     var promises = [];
                     Ext.Array.each(testcases, function(testcase) {
                         me.logger.log("FormattedID: ", testcase.get('FormattedID'));
-                        promises.push(me._createItem(model,testcase,{ TestFolder: target_folder.get('ObjectID') }, me));
+                        var f = function() {
+//                        var step = step_array[0];
+//                        step_array.shift();
+                            return me._createItem(model,testcase,{ TestFolder: target_folder.get('ObjectID') }, me);
+                        };
+                        promises.push(f);
                     });
-                    Deft.Promise.all(promises).then({
+                    Deft.Chain.sequence(promises).then({
                         success: function(records){                        
                             deferred.resolve(records);
                         },
