@@ -1,10 +1,7 @@
 Ext.define('CustomApp', {
     extend: 'Rally.app.App',
     componentCls: 'app',
-    columns: [
-        {dataIndex:'FormattedID',text:'id'},
-        {dataIndex:'Name',text:'Name',flex:1}
-    ],
+    columns: [],
     logger: new Rally.technicalservices.Logger(),
     defaults: { padding: 5, margin: 5 },
     items: [
@@ -13,6 +10,13 @@ Ext.define('CustomApp', {
         {xtype:'tsinfolink',informationHtml:'Displays Test Cases that have either no value or duplicate values in a chosen field.'}
     ],
     launch: function() {
+        this.columns = [
+            {dataIndex:'FormattedID',text:'id', renderer: function(value,metaData,record) {
+                    return Rally.ui.renderer.RendererFactory.renderRecordField( record, 'FormattedID' );
+                }
+            },
+            {dataIndex:'Name',text:'Name',flex:1}
+        ];
         if (typeof(this.getAppId()) == 'undefined' ) {
             // not inside Rally
             this._showExternalSettingsDialog(this.getSettingsFields());
@@ -28,7 +32,7 @@ Ext.define('CustomApp', {
         } else {
             this.logger.log("Field Name: ",scenario_id_field_name);
             
-            this.columns.push({dataIndex:scenario_id_field_name,text:'Scenario ID'});
+            this.columns.push({dataIndex:scenario_id_field_name,text:'Scenario ID',editor: 'rallytextfield'});
             
             var fetch = this._getFetchFields();
             this.setLoading("Fetching Test Cases");
@@ -88,6 +92,7 @@ Ext.define('CustomApp', {
             columnCfgs:me.columns,
             store:store,
             enableRanking: false,
+            showRowActionsColumn: false,
             pagingToolbarCfg: {
                 store: store
             }
