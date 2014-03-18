@@ -37,6 +37,10 @@ Ext.define('CustomApp', {
                 autoLoad:true,
                 limit:'Infinity',
                 fetch:fetch,
+                context: {
+                    projectScopeDown: false,
+                    projectScopeUp: false
+                },
                 listeners: {
                     scope: this,
                     load: function(store,test_cases){
