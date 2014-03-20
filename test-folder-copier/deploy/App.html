@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Mar 18 2014 12:25:35 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Mar 20 2014 13:38:52 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Mar 18 2014 12:25:35 GMT-0700 (PDT)";
-        var CHECKSUM = 42188718167;
+        var APP_BUILD_DATE = "Thu Mar 20 2014 13:38:52 GMT-0700 (PDT)";
+        var CHECKSUM = 42519594763;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -397,11 +397,13 @@ Ext.define('CustomApp', {
     _addProjectSelectors:function(source_container,target_container) {
         var workspace = this.getContext().getWorkspace();
         this.logger.log('_addProjectSelectors',workspace);
+        this.logger.log(' project', this.getContext().getProject()._ref);
         source_container.add({
             fieldLabel: 'Source Project',
             labelCls: 'ts-column-header',
             labelAlign: 'top',
             xtype: 'rallyprojectpicker',
+            value: this.getContext().getProject()._ref,
             workspace: workspace._ref,
             listeners: {
                 scope: this,

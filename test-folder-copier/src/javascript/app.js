@@ -47,11 +47,13 @@ Ext.define('CustomApp', {
     _addProjectSelectors:function(source_container,target_container) {
         var workspace = this.getContext().getWorkspace();
         this.logger.log('_addProjectSelectors',workspace);
+        this.logger.log(' project', this.getContext().getProject()._ref);
         source_container.add({
             fieldLabel: 'Source Project',
             labelCls: 'ts-column-header',
             labelAlign: 'top',
             xtype: 'rallyprojectpicker',
+            value: this.getContext().getProject()._ref,
             workspace: workspace._ref,
             listeners: {
                 scope: this,
