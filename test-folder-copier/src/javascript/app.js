@@ -154,10 +154,30 @@ Ext.define('CustomApp', {
         }
     },
     _clearAndCopyFolders: function() {
+        var me = this;
         var target_project = this.projects['target'].get('_ref');
+        this.setLoading("Clearing...");
+        
+        var f = function() { return me._clearFolders(target_project,me); }
+        var g = function() { return me._clearTestCases(target_project,me); }
+        var promises = [f,g];
+        Deft.Chain.sequence(promises).then({
+            scope: this,
+            success: function(records){
+                this._copyFolders();
+            },
+            failure: function(error) {
+                deferred.reject("Problem removing folders " + error);
+            }
+        });
+        
+    },
+    _clearFolders: function(target_project,me) {
         this.setLoading("Removing Folders...");
+        var deferred = Ext.create('Deft.Deferred');
         Ext.create('Rally.data.wsapi.Store',{
             model:'TestFolder',
+            limit:'Infinity',
             context: {
                 projectScopeDown: false,
                 projectScopeUp: false,
@@ -165,7 +185,7 @@ Ext.define('CustomApp', {
             },
             autoLoad: true,
             listeners: {
-                scope: this,
+                scope: me,
                 load: function(store,folders){
                     var me = this;
                     var promises = [];
@@ -179,16 +199,56 @@ Ext.define('CustomApp', {
                         promises.push(f);
                     }
                     Deft.Chain.sequence(promises).then({
-                        success: function(records){                        
-                            me._copyFolders();
+                        success: function(records){
+                            deferred.resolve([]);
                         },
                         failure: function(error) {
-                            alert(error);
+                            deferred.reject("Problem removing folders " + error);
                         }
                     });
                 }
             }
         });
+        return deferred;
+    },
+    _clearTestCases: function(target_project,me) {
+        this.setLoading("Removing Test Cases...");
+        var deferred = Ext.create('Deft.Deferred');
+        Ext.create('Rally.data.wsapi.Store',{
+            model:'TestCase',
+            limit:'Infinity',
+            context: {
+                projectScopeDown: false,
+                projectScopeUp: false,
+                project: target_project
+            },
+            autoLoad: true,
+            listeners: {
+                scope: me,
+                load: function(store,testcases){
+                    var me = this;
+                    var promises = [];
+                    var number_of_testcases = testcases.length;
+                    for ( var i=0;i<number_of_testcases;i++ ) {
+                        var f = function() {
+                            var testcase = testcases[0];
+                            testcases.shift();
+                            return me._deleteItem(testcase, me);
+                        };
+                        promises.push(f);
+                    }
+                    Deft.Chain.sequence(promises).then({
+                        success: function(records){
+                            deferred.resolve([]);
+                        },
+                        failure: function(error) {
+                            deferred.reject("Problem removing test cases " + error);
+                        }
+                    });
+                }
+            }
+        });
+        return deferred;
     },
     _deleteItem: function(item, scope){
         var deferred = Ext.create('Deft.Deferred');
@@ -226,8 +286,6 @@ Ext.define('CustomApp', {
                     me.logger.log("Promise for ", source_folder.get('FormattedID'));
                     // change so it can be sequenced (to prevent collisions)
                     var f = function() {
-//                        var step = step_array[0];
-//                        step_array.shift();
                         return me._createItem(model,source_folder,{},me);
                     };
                     
@@ -413,6 +471,7 @@ Ext.define('CustomApp', {
         var deferred = Ext.create('Deft.Deferred');
         Ext.create('Rally.data.wsapi.Store',{
             model: 'TestCase',
+            limit: 'Infinity',
             filters: [{property:'TestFolder.ObjectID',value:source_folder.get('ObjectID')}],
             fetch: true,
             autoLoad: true,
@@ -556,7 +615,7 @@ Ext.define('CustomApp', {
         var deferred = Ext.create('Deft.Deferred');
         me.logger.log("_copyAttachmentsForTestCase");
         source_testcase.getCollection('Attachments').load({
-            fetch: true,
+            fetch: ['Content','ContentType','Description','Name','Size','Summary'],
             callback: function(attachments, operation, success) {
                 me.logger.log("Attachments: ", attachments);
                 var promises = [];
@@ -572,7 +631,7 @@ Ext.define('CustomApp', {
                     promises.push(f);
                 }
                 Deft.Chain.sequence(promises).then({
-                    success: function(records){                        
+                    success: function(records){
                         deferred.resolve(records);
                     },
                     failure: function(error) {
