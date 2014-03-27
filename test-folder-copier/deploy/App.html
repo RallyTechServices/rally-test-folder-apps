@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Mar 26 2014 21:59:06 GMT-0700 (PDT) -->
+    <!--  Build Date: Wed Mar 26 2014 22:49:59 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Mar 26 2014 21:59:06 GMT-0700 (PDT)";
-        var CHECKSUM = 49516880456;
+        var APP_BUILD_DATE = "Wed Mar 26 2014 22:49:59 GMT-0700 (PDT)";
+        var CHECKSUM = 57617621618;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -976,7 +976,7 @@ Ext.define('CustomApp', {
                     var f = function() {
                         var item = item_array[0];
                         item_array.shift();
-                        return me._createItem(model,item,{ Artifact: target_testcase.get('ObjectID') }, me);
+                        return me._createAttachment(model,item,{ Artifact: target_testcase.get('ObjectID') }, me);
                     };
                     promises.push(f);
                 }
@@ -990,6 +990,70 @@ Ext.define('CustomApp', {
                 });
             }
         });
+        return deferred.promise;
+    },
+    _createAttachment: function(model,source_item,change_fields, me){
+        var deferred = Ext.create('Deft.Deferred');
+        me.logger.log("Create Attachment ", model.getName(), source_item.get('Name') );
+        
+        if ( ! source_item.get('Content') ) { 
+            deferred.resolve([]);
+        } else {
+            var content_oid = source_item.get('Content').ObjectID;
+            
+            Rally.data.ModelFactory.getModel({
+                type: 'AttachmentContent',
+                success: function(ac_model) {
+                    ac_model.load(content_oid,{
+                        fetch: ['Content'],
+                        callback: function(result,operation) {
+                            var content = result.get('Content');
+                            
+                            var copied_content = Ext.create(ac_model,{
+                                Content: content
+                            });
+                            me.logger.log("Saving attachment CONTENT");
+                            
+                            copied_content.save({
+                                callback: function(result,operation){
+    
+                                    if ( !result || !result.get('ObjectID') ) {
+                                        deferred.resolve([]);
+                                    } else {
+                                        var content_oid = result.get('ObjectID');
+                                        me.logger.log("Attachment content OID: ", content_oid);
+                                        change_fields.Content = content_oid;
+                                        var item = me._cleanseItem(source_item.getData(),change_fields);
+                                        var record = Ext.create(model, item );
+                                        me.logger.log("Saving attachment");
+                                        record.save({
+                                            callback: function(result, operation) {
+                                                me.logger.log(" -- Back from trying to create ", model.getName(), item['Name']);
+                                                if(operation.wasSuccessful()) {
+                                                    deferred.resolve([source_item,result]);
+                                                } else {
+                                                    var message = model.getName();
+                                                    if ( item['Name'] ) {
+                                                        message += "\n" + item['Name'];
+                                                    }
+                                                    
+                                                    if ( operation.error.errors && operation.error.errors.length > 0 ) {
+                                                        message += "\n" + operation.error.errors[0];
+                                                    }
+                                                    me.logger.log(" !! ERROR ", message, operation );
+                                                    deferred.reject("Could not save " + message);
+                                                }
+                                            }
+                                        });
+                                    }   
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
         return deferred.promise;
     }
 

@@ -1,6 +1,6 @@
 {
     "name": "Test Folder Copier",
     "className": "CustomApp",
-    "server": "https://demo01.rallydev.com",
+    "server": "https://rally1.rallydev.com",
     "sdk": "2.0rc2"
 }
