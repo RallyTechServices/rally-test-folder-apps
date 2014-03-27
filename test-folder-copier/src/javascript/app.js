@@ -253,19 +253,24 @@ Ext.define('CustomApp', {
     _createItem: function(model,source_item,change_fields, scope){
         var deferred = Ext.create('Deft.Deferred');
         var me = scope;
-        me.logger.log("Create from ", source_item);
+        me.logger.log("Create  ", model.getName(), source_item.get('Name') );
         var item = me._cleanseItem(source_item.getData(),change_fields);
-        me.logger.log("Create as ", item);
         var record = Ext.create(model, item );
         record.save({
             callback: function(result, operation) {
+                me.logger.log(" -- Back from trying to create ", model.getName(), item['Name']);
                 if(operation.wasSuccessful()) {
                     deferred.resolve([source_item,result]);
                 } else {
                     var message = model.getName();
                     if ( item['Name'] ) {
-                        message = item['Name'];
+                        message += "\n" + item['Name'];
                     }
+                    
+                    if ( operation.error.errors && operation.error.errors.length > 0 ) {
+                        message += "\n" + operation.error.errors[0];
+                    }
+                    me.logger.log(" !! ERROR ", message, operation );
                     deferred.reject("Could not save " + message);
                 }
             }
@@ -302,9 +307,12 @@ Ext.define('CustomApp', {
         me.logger.log("_setParentFolders",source_folders,new_records_by_original_ref);
         var promises = [];
         Ext.Array.each( source_folders, function(source_folder){
-            promises.push(me._setParentFolder(source_folder,new_records_by_original_ref,me));
+            var f = function() {
+                me._setParentFolder(source_folder,new_records_by_original_ref,me);
+            }
+            promises.push(f);
         });
-        Deft.Promise.all(promises).then({
+        Deft.Chain.sequence(promises).then({
             success: function(records) {
                 me.logger.log("done with set parent folder promises");
                 me._copyTestCases(source_folders,new_records_by_original_ref,me);
@@ -357,14 +365,18 @@ Ext.define('CustomApp', {
                 Ext.Array.each( source_folders, function(source_folder){
                     me.logger.log(" TCs", source_folder.get('TestCases').Count);
                     if ( source_folder.get('TestCases').Count > 0 ) {
-                        promises.push(me._copyTestCasesForFolder(source_folder,new_records_by_original_ref[source_folder.get('_ref')],model, me));
+                        var f = function() {
+                            return me._copyTestCasesForFolder(source_folder,new_records_by_original_ref[source_folder.get('_ref')],model, me);
+                        };
+                        
+                        promises.push(f);
                     }
                 });
                 if ( promises.length === 0 ) {
                     me.logger.log("No test cases to copy");
                     me._finishAndRedisplay(me);
                 } else {
-                    Deft.Promise.all(promises).then({
+                    Deft.Chain.sequence(promises).then({
                         success: function(record_sets) {
                             var pairs = [];
                             Ext.Array.each(record_sets, function(received_pairs){
@@ -415,8 +427,6 @@ Ext.define('CustomApp', {
                     Ext.Array.each(testcases, function(testcase) {
                         me.logger.log("FormattedID: ", testcase.get('FormattedID'));
                         var f = function() {
-//                        var step = step_array[0];
-//                        step_array.shift();
                             return me._createItem(model,testcase,{ TestFolder: target_folder.get('ObjectID') }, me);
                         };
                         promises.push(f);
@@ -448,7 +458,10 @@ Ext.define('CustomApp', {
                     var target_testcase = pair[1];
                     me.logger.log(source_testcase.get('Steps').Count);
                     if ( source_testcase.get('Steps').Count > 0 ) {
-                        promises.push(me._copyStepsForTestCase(model, source_testcase, target_testcase, me));
+                        var f = function() {
+                            return me._copyStepsForTestCase(model, source_testcase, target_testcase, me);
+                        };
+                        promises.push(f);
                     }
                 });
                 if ( promises.length == 0 ) {
@@ -456,7 +469,7 @@ Ext.define('CustomApp', {
                     me._finishAndRedisplay(me);
                 } else {
                     me.logger.log("ALL promises ready");
-                    Deft.Promise.all(promises).then({
+                    Deft.Chain.sequence(promises).then({
                         success: function(results) {
                             me.logger.log("done with copy test case step promises");
                             //me._copySteps(pairs,me);
@@ -482,7 +495,10 @@ Ext.define('CustomApp', {
                     var source_testcase = pair[0];
                     var target_testcase = pair[1];
                     if ( source_testcase.get('Attachments').Count > 0 ) {
-                        promises.push(me._copyAttachmentsForTestCase(model, source_testcase, target_testcase, me));
+                        var f = function() {
+                            return me._copyAttachmentsForTestCase(model, source_testcase, target_testcase, me);
+                        };
+                        promises.push(f);
                     }
                 });
                 if ( promises.length == 0 ) {
@@ -490,7 +506,7 @@ Ext.define('CustomApp', {
                     me._finishAndRedisplay(me);
                 } else {
                     me.logger.log("ALL promises ready");
-                    Deft.Promise.all(promises).then({
+                    Deft.Chain.sequence(promises).then({
                         success: function(results) {
                             me.logger.log("done with copy test case attachment promises");
                             //me._copySteps(pairs,me);
