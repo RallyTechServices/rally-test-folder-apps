@@ -7,10 +7,23 @@ Ext.define('CustomApp', {
     items: [
         {xtype:'container',itemId:'button_box',margin: 5, padding: 5, defaults: { margin: 5 }},
         {xtype:'container',layout: {type:'hbox'}, defaults:{ padding: 5, margin: 5 },items:[
-            {xtype:'container',itemId:'source_selection_box',flex:1},
-            {xtype:'container',itemId:'source_folder_box', flex:1},
-            {xtype:'container',itemId:'target_folder_box', flex:1},
-            {xtype:'container',itemId:'target_selection_box',flex:1}
+             {xtype:'container',layout: {type: 'vbox'}, itemId:'source_box',flex:1, items: [
+            		{xtype:'container',itemId:'source_selection_box', flex:1},
+            		{xtype:'container',itemId:'source_folder_box', flex:1}
+             ]}, 
+             {xtype:'container',layout: {type: 'vbox'},itemId:'target_box',flex:1, items:[
+                    {xtype:'container',itemId:'target_selection_box', flex:1},
+                    {xtype:'container',itemId:'target_folder_box', flex:1}                                                
+             
+             ]}       
+            		
+  
+            
+            
+            //{xtype:'container',itemId:'source_selection_box',flex:1},
+            //{xtype:'container',itemId:'source_folder_box', flex:1},
+            //{xtype:'container',itemId:'target_folder_box', flex:1},
+            //{xtype:'container',itemId:'target_selection_box',flex:1}
         ]},
         {xtype:'tsinfolink'}
     ],

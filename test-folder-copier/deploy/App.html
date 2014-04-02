@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Mar 26 2014 22:49:59 GMT-0700 (PDT) -->
+    <!--  Build Date: Wed Apr 02 2014 13:00:54 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Mar 26 2014 22:49:59 GMT-0700 (PDT)";
-        var CHECKSUM = 57617621618;
+        var APP_BUILD_DATE = "Wed Apr 02 2014 13:00:54 GMT-0600 (MDT)";
+        var CHECKSUM = 59413295495;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -357,10 +357,23 @@ Ext.define('CustomApp', {
     items: [
         {xtype:'container',itemId:'button_box',margin: 5, padding: 5, defaults: { margin: 5 }},
         {xtype:'container',layout: {type:'hbox'}, defaults:{ padding: 5, margin: 5 },items:[
-            {xtype:'container',itemId:'source_selection_box',flex:1},
-            {xtype:'container',itemId:'source_folder_box', flex:1},
-            {xtype:'container',itemId:'target_folder_box', flex:1},
-            {xtype:'container',itemId:'target_selection_box',flex:1}
+             {xtype:'container',layout: {type: 'vbox'}, itemId:'source_box',flex:1, items: [
+            		{xtype:'container',itemId:'source_selection_box', flex:1},
+            		{xtype:'container',itemId:'source_folder_box', flex:1}
+             ]}, 
+             {xtype:'container',layout: {type: 'vbox'},itemId:'target_box',flex:1, items:[
+                    {xtype:'container',itemId:'target_selection_box', flex:1},
+                    {xtype:'container',itemId:'target_folder_box', flex:1}                                                
+             
+             ]}       
+            		
+  
+            
+            
+            //{xtype:'container',itemId:'source_selection_box',flex:1},
+            //{xtype:'container',itemId:'source_folder_box', flex:1},
+            //{xtype:'container',itemId:'target_folder_box', flex:1},
+            //{xtype:'container',itemId:'target_selection_box',flex:1}
         ]},
         {xtype:'tsinfolink'}
     ],
