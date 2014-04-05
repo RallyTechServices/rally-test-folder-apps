@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Apr 03 2014 17:28:04 GMT-0600 (MDT) -->
+    <!--  Build Date: Sat Apr 05 2014 08:35:54 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Apr 03 2014 17:28:04 GMT-0600 (MDT)";
-        var CHECKSUM = 69168647679;
+        var APP_BUILD_DATE = "Sat Apr 05 2014 08:35:54 GMT-0600 (MDT)";
+        var CHECKSUM = 70360673350;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -119,12 +119,11 @@ Ext.define('Rally.technicalservices.InfoLink',{
 Ext.define('Rally.technicalservices.TestFolderTreeItem', {
     extend: 'Rally.ui.tree.TreeItem',
     alias: 'widget.tstestfoldertreeitem',
-    requires: '',
+    requires: '' ,
 
     config: {
-        displayedFields: ['Name'],
-
-    },
+        displayedFields: ['Name']
+},
 
     getContentTpl: function(){
         var me = this;
@@ -133,6 +132,7 @@ Ext.define('Rally.technicalservices.TestFolderTreeItem', {
                 '<tpl if="this.canDrag()"><div class="icon drag"></div></tpl>',
                 '{[this.getActionsGear()]}',
                 '<div class="textContent ellipses">{[this.getFormattedId()]} - {Name}</div>',
+
                 /*'<div class="rightSide">',
                 '</div>',*/                {
                     canDrag: function(){
@@ -159,6 +159,8 @@ Ext.define('Rally.technicalservices.TestFolderTreeItem', {
     _buildActionsGearHtml: function(){
 //        var hasPermissions = this.getRecord().get('creatable') || this.getRecord().get('updatable') || this.getRecord().get('deletable');
 //        return hasPermissions? '<div class="row-action icon"></div>': '';
+         //return '<div class="selected"></div>';
+
         return '';
     }
 
@@ -222,25 +224,64 @@ Ext.define('Rally.technicalservices.TestFolderTree', {
             listeners: {
                 beforerecordsaved: this.beforeRecordSaved,
                 
-                itemselected: function(treeItem)
+                itemselected: function(treeItem, is_selected)
                 {
-                	this.selectedItem = treeItem;
-                	this.selectedRecords = []; //clean out the array
-                	this._getChildRecords(this.selectedItem);
-                	this._highlightSelectedRecords(treeItem);
-                	console.log ('this.selectedRecords', this.selectedRecords);
+                    this.selectedRecords = []; //clean out the array
+                    if (is_selected) 
+                    {
+                        this.selectedItem = treeItem;
+                        this._getChildRecords(this.selectedItem);
+                    }
                 }
-               
             },
             topLevelStoreConfig: {
                 fetch:['TestCases','Children','FormattedID','Name']
             },
             selectedItem: null,
-            selectedRecords: [],
+            selectedRecords: [],  //start out with all records....
             isSource: false
         }, config);
 
         this.callParent([config]);
+    },
+    
+    selectTreeItem: function(treeItem){
+      
+        var is_already_selected = (treeItem.getEl().down('.treeItemContent').hasCls('treeItemSelected'));
+
+        if (!this._isSelectedParent(treeItem) && is_already_selected)
+        {
+            return; 
+        }
+        
+        Ext.Array.forEach(this.getEl().query('.treeItemSelected'), function(treeItemEl){
+            Ext.get(treeItemEl).removeCls('treeItemSelected');
+        });
+
+        if (!is_already_selected) {
+            treeItem.getEl().down('.treeItemContent').addCls('treeItemSelected');
+            Ext.Array.forEach(treeItem.query('tstestfoldertreeitem'), function(childTreeItem){
+                childTreeItem.getEl().down('.treeItemContent').addCls('treeItemSelected');
+            });            
+            
+        }
+
+        this.fireEvent('itemselected', treeItem, !is_already_selected);
+        this.publish(Rally.Message.objectFocus, treeItem.getRecord(), this);
+    },
+    _isSelectedParent: function (treeItem)
+    {
+       //This function assumes that tree items are returned in order.
+       var tree_items = this.query('tstestfoldertreeitem');
+       for (var i=0; i < tree_items.length; i++)
+       {
+           if (tree_items[i].getEl().down('.treeItemContent').hasCls('treeItemSelected'))
+           {
+               return (tree_items[i].getId() === treeItem.getId());
+           }
+       }
+
+       return false; 
     },
 
     treeItemConfigForRecordFn: function(record){
@@ -275,26 +316,16 @@ Ext.define('Rally.technicalservices.TestFolderTree', {
     _isTestCase: function(record) {
         return record.get('_type') === 'testcase';
     },
-    _highlightSelectedRecords: function(currentTreeItem)
-    {
-    	//Un-highlights currently highlighted child records and highlights newly selected child records.  
-       	var children = currentTreeItem.query('tstestfoldertreeitem');
-       	for (var i=0; i < children.length; i++)
-             {
-             children[i].style = '{background-color: #ccffcc}';
-       		}
-       	
-    },
     _getChildRecords: function(currentTreeItem)
     {
-    	this.selectedRecords.push(currentTreeItem.getRecord());
-       	var children = this.selectedItem.query('tstestfoldertreeitem');
+        this.selectedRecords.push(currentTreeItem.getRecord());
+           var children = this.selectedItem.query('tstestfoldertreeitem');
         if (children && children.length > 0)
         {
-           	for (var i=0; i<children.length; i++)
-   			{
-   	    	this.selectedRecords.push(children[i].getRecord());
-   			}
+               for (var i=0; i<children.length; i++)
+               {
+               this.selectedRecords.push(children[i].getRecord());
+               }
         }
     },
 
@@ -385,8 +416,7 @@ Ext.define('Rally.technicalservices.TestFolderTree', {
     
     _getChildTypeFetchFields: function(parentFieldName) {
         //return this._getDefaultTopLevelFetchFields().concat([parentFieldName, 'WorkProduct', 'Project']);
-        console.log ('parentFieldName', parentFieldName);
-    	return this.config.topLevelStoreConfig.fetch.concat([parentFieldName, 'WorkProduct', 'Project']);
+        return this.config.topLevelStoreConfig.fetch.concat([parentFieldName, 'WorkProduct', 'Project']);
     }
 });
 Ext.define('CustomApp', {
@@ -442,7 +472,7 @@ Ext.define('CustomApp', {
         });
         this.down('#instructions_box').add({
             xtype:'label',
-            text: 'Please select a source test folder to copy to the target project.  All decendent folders and cases of the selected source folder will be copied to the target project.',
+            text: 'Please select a source project and a target project.  To copy a subset of test folders from the source project, select a test folder.  All decendent folders and cases of the selected source folder will be copied to the target project.  To copy ALL test folders that belong to the source project, leave all folders unselected.',
             style:'{color: #808080}',
             id: 'instructions'
         });
@@ -541,8 +571,6 @@ Ext.define('CustomApp', {
         this.down('#copy_button').setDisabled(true);
         this.down('#clear_button').setDisabled(true);
         this.down('#add_button').setDisabled(true);
-        //Show instructions
-        this.down('label').setVisible(true);
         
         var target_store = this.stores['target'];
         var source_store = this.stores['source'];
@@ -557,26 +585,11 @@ Ext.define('CustomApp', {
                     this.down('#clear_button').setDisabled(false);
                     this.down('#add_button').setDisabled(false);
                 }
-                //Hide instructions 
-                this.down('label').setVisible(false);
             }
         }
     },
-    _validateSourceFolderSelected: function()
-    {
-    	console.log('_validateSoruceFolderSelected',this.down('#source_folder_box').down('tstestfoldertree').selectedItem);
-    	if (this.down('#source_folder_box').down('tstestfoldertree').selectedItem)
-    	   {
-    	    return true;
-    	   }
-       return false;
-    },
     _clearAndCopyFolders: function() {
         var me = this;
-        if (!this._validateSourceFolderSelected()){
-            alert ('Please select a source folder to copy to the target project.');
-            return;
-        }
         var target_project = this.projects['target'].get('_ref');
         this.setLoading("Clearing...");
         
@@ -690,32 +703,26 @@ Ext.define('CustomApp', {
     },
    _getSelectedFolderFamily: function(container)
    {
-      //This function returns the parent folder plus any children, grandchildren, etc. for the item selected in the tree	   
+      //This function returns the parent folder plus any children, grandchildren, etc. for the item selected in the tree
        var tree = this.down(container).down('tstestfoldertree');
+       if (tree.selectedRecords.length == 0)  //if no item is selected, then we will just get all the records 
+       { 
+           return this.stores['source'].getRecords();
+       }
+       
        return tree.selectedRecords; 
    },
-
-   
-   
-   
    _copyFolders: function() {
         var me = this;
         this.logger.log("_copyFolders");
-        if (!this._validateSourceFolderSelected()){
-            alert ('Please select a source folder to copy to the target project.');
-           return;
-        }
         var target_store = this.stores['target'];
         var source_store = this.stores['source'];
         var target_project = this.projects['target'];
         var source_project = this.projects['source'];
         
-        //var source_folders = source_store.getRecords();
+        //var source_folders = 
         var source_folders = this._getSelectedFolderFamily('#source_folder_box');
-        console.log ('source_folders', source_folders);
-        console.log ('source_store.getRecords', source_store.getRecords());
- 
-        
+
         this.setLoading("Copying Folders");
         Rally.data.ModelFactory.getModel({
             type: 'TestFolder',
@@ -736,7 +743,7 @@ Ext.define('CustomApp', {
                         // result is an array of arrays
                         var new_records_by_original_ref = {};
                         Ext.Array.each(records, function(pair){
-                            console.log (pair[0].get('_ref'), pair[1]);
+                            //console.log (pair[0].get('_ref'), pair[1]);
                             new_records_by_original_ref[pair[0].get('_ref')] = pair[1];
                         });
                         
@@ -1177,6 +1184,7 @@ Ext.define('CustomApp', {
     font-variant: normal;
     font-weight: normal;
 }
+ 
     </style>
 
 </head>
