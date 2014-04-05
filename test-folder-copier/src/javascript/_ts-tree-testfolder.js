@@ -33,20 +33,73 @@ Ext.define('Rally.technicalservices.TestFolderTree', {
             scope: this,
             treeItemConfigForRecordFn: this.treeItemConfigForRecordFn,
             listeners: {
-                beforerecordsaved: this.beforeRecordSaved
+                beforerecordsaved: this.beforeRecordSaved,
+                
+                itemselected: function(treeItem, is_selected)
+                {
+                    this.selectedRecords = []; //clean out the array
+                    if (is_selected) 
+                    {
+                        this.selectedItem = treeItem;
+                        this._getChildRecords(this.selectedItem);
+                    }
+                }
             },
             topLevelStoreConfig: {
                 fetch:['TestCases','Children','FormattedID','Name']
-            }
+            },
+            selectedItem: null,
+            selectedRecords: [],  //start out with all records....
+            isSource: false
         }, config);
 
         this.callParent([config]);
     },
+    
+    selectTreeItem: function(treeItem){
+      
+        var is_already_selected = (treeItem.getEl().down('.treeItemContent').hasCls('treeItemSelected'));
+
+        if (!this._isSelectedParent(treeItem) && is_already_selected)
+        {
+            return; 
+        }
+        
+        Ext.Array.forEach(this.getEl().query('.treeItemSelected'), function(treeItemEl){
+            Ext.get(treeItemEl).removeCls('treeItemSelected');
+        });
+
+        if (!is_already_selected) {
+            treeItem.getEl().down('.treeItemContent').addCls('treeItemSelected');
+            Ext.Array.forEach(treeItem.query('tstestfoldertreeitem'), function(childTreeItem){
+                childTreeItem.getEl().down('.treeItemContent').addCls('treeItemSelected');
+            });            
+            
+        }
+
+        this.fireEvent('itemselected', treeItem, !is_already_selected);
+        this.publish(Rally.Message.objectFocus, treeItem.getRecord(), this);
+    },
+    _isSelectedParent: function (treeItem)
+    {
+       //This function assumes that tree items are returned in order.
+       var tree_items = this.query('tstestfoldertreeitem');
+       for (var i=0; i < tree_items.length; i++)
+       {
+           if (tree_items[i].getEl().down('.treeItemContent').hasCls('treeItemSelected'))
+           {
+               return (tree_items[i].getId() === treeItem.getId());
+           }
+       }
+
+       return false; 
+    },
 
     treeItemConfigForRecordFn: function(record){
         var config = {
-            selectable: false,
-            canDrag: false
+            selectable: this.isSource,
+            canDrag: false,
+            expanded: true  // JM: you are genius!
         };
 
         if(this._isTestFolder(record)){
@@ -54,7 +107,6 @@ Ext.define('Rally.technicalservices.TestFolderTree', {
         } else {
             config.xtype = 'rallytreeitem';
         }
-
         return config;
     },
 
@@ -74,6 +126,18 @@ Ext.define('Rally.technicalservices.TestFolderTree', {
 
     _isTestCase: function(record) {
         return record.get('_type') === 'testcase';
+    },
+    _getChildRecords: function(currentTreeItem)
+    {
+        this.selectedRecords.push(currentTreeItem.getRecord());
+           var children = this.selectedItem.query('tstestfoldertreeitem');
+        if (children && children.length > 0)
+        {
+               for (var i=0; i<children.length; i++)
+               {
+               this.selectedRecords.push(children[i].getRecord());
+               }
+        }
     },
 
     childModelTypeForRecordFn: function(record){

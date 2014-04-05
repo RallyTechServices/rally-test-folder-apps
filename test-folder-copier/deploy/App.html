@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Mar 26 2014 22:49:59 GMT-0700 (PDT) -->
+    <!--  Build Date: Sat Apr 05 2014 08:35:54 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Mar 26 2014 22:49:59 GMT-0700 (PDT)";
-        var CHECKSUM = 57617621618;
+        var APP_BUILD_DATE = "Sat Apr 05 2014 08:35:54 GMT-0600 (MDT)";
+        var CHECKSUM = 70360673350;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -119,27 +119,27 @@ Ext.define('Rally.technicalservices.InfoLink',{
 Ext.define('Rally.technicalservices.TestFolderTreeItem', {
     extend: 'Rally.ui.tree.TreeItem',
     alias: 'widget.tstestfoldertreeitem',
+    requires: '' ,
 
     config: {
         displayedFields: ['Name']
-    },
+},
 
     getContentTpl: function(){
         var me = this;
 
         return Ext.create('Ext.XTemplate',
-                    '<tpl if="this.canDrag()"><div class="icon drag"></div></tpl>',
-                    '{[this.getActionsGear()]}',
-                    '<div class="textContent ellipses">{[this.getFormattedId()]} - {Name}</div>',
-                    /*'<div class="rightSide">',
-                        '{[this.getScheduleState(values)]}',
-                    '</div>',*/
-                {
+                '<tpl if="this.canDrag()"><div class="icon drag"></div></tpl>',
+                '{[this.getActionsGear()]}',
+                '<div class="textContent ellipses">{[this.getFormattedId()]} - {Name}</div>',
+
+                /*'<div class="rightSide">',
+                '</div>',*/                {
                     canDrag: function(){
                         return me.getCanDrag();
                     },
                     getActionsGear: function(){
-                        return me._buildActionsGearHtml();
+                       return me._buildActionsGearHtml();
                     },
                     getScheduleState: function(){
                         //return Rally.ui.renderer.RendererFactory.renderRecordField(me.getRecord(), 'ScheduleState');
@@ -152,13 +152,20 @@ Ext.define('Rally.technicalservices.TestFolderTreeItem', {
                 }
         );
     },
+    expandOrCollapse: function(){
+     //Override the function so that the tree cannot be collapsed 
+    },
+
     _buildActionsGearHtml: function(){
 //        var hasPermissions = this.getRecord().get('creatable') || this.getRecord().get('updatable') || this.getRecord().get('deletable');
 //        return hasPermissions? '<div class="row-action icon"></div>': '';
+         //return '<div class="selected"></div>';
+
         return '';
     }
 
 });
+
 /*
  */
 Ext.define('Rally.technicalservices.Logger',{
@@ -215,20 +222,73 @@ Ext.define('Rally.technicalservices.TestFolderTree', {
             scope: this,
             treeItemConfigForRecordFn: this.treeItemConfigForRecordFn,
             listeners: {
-                beforerecordsaved: this.beforeRecordSaved
+                beforerecordsaved: this.beforeRecordSaved,
+                
+                itemselected: function(treeItem, is_selected)
+                {
+                    this.selectedRecords = []; //clean out the array
+                    if (is_selected) 
+                    {
+                        this.selectedItem = treeItem;
+                        this._getChildRecords(this.selectedItem);
+                    }
+                }
             },
             topLevelStoreConfig: {
                 fetch:['TestCases','Children','FormattedID','Name']
-            }
+            },
+            selectedItem: null,
+            selectedRecords: [],  //start out with all records....
+            isSource: false
         }, config);
 
         this.callParent([config]);
     },
+    
+    selectTreeItem: function(treeItem){
+      
+        var is_already_selected = (treeItem.getEl().down('.treeItemContent').hasCls('treeItemSelected'));
+
+        if (!this._isSelectedParent(treeItem) && is_already_selected)
+        {
+            return; 
+        }
+        
+        Ext.Array.forEach(this.getEl().query('.treeItemSelected'), function(treeItemEl){
+            Ext.get(treeItemEl).removeCls('treeItemSelected');
+        });
+
+        if (!is_already_selected) {
+            treeItem.getEl().down('.treeItemContent').addCls('treeItemSelected');
+            Ext.Array.forEach(treeItem.query('tstestfoldertreeitem'), function(childTreeItem){
+                childTreeItem.getEl().down('.treeItemContent').addCls('treeItemSelected');
+            });            
+            
+        }
+
+        this.fireEvent('itemselected', treeItem, !is_already_selected);
+        this.publish(Rally.Message.objectFocus, treeItem.getRecord(), this);
+    },
+    _isSelectedParent: function (treeItem)
+    {
+       //This function assumes that tree items are returned in order.
+       var tree_items = this.query('tstestfoldertreeitem');
+       for (var i=0; i < tree_items.length; i++)
+       {
+           if (tree_items[i].getEl().down('.treeItemContent').hasCls('treeItemSelected'))
+           {
+               return (tree_items[i].getId() === treeItem.getId());
+           }
+       }
+
+       return false; 
+    },
 
     treeItemConfigForRecordFn: function(record){
         var config = {
-            selectable: false,
-            canDrag: false
+            selectable: this.isSource,
+            canDrag: false,
+            expanded: true  // JM: you are genius!
         };
 
         if(this._isTestFolder(record)){
@@ -236,7 +296,6 @@ Ext.define('Rally.technicalservices.TestFolderTree', {
         } else {
             config.xtype = 'rallytreeitem';
         }
-
         return config;
     },
 
@@ -256,6 +315,18 @@ Ext.define('Rally.technicalservices.TestFolderTree', {
 
     _isTestCase: function(record) {
         return record.get('_type') === 'testcase';
+    },
+    _getChildRecords: function(currentTreeItem)
+    {
+        this.selectedRecords.push(currentTreeItem.getRecord());
+           var children = this.selectedItem.query('tstestfoldertreeitem');
+        if (children && children.length > 0)
+        {
+               for (var i=0; i<children.length; i++)
+               {
+               this.selectedRecords.push(children[i].getRecord());
+               }
+        }
     },
 
     childModelTypeForRecordFn: function(record){
@@ -356,15 +427,21 @@ Ext.define('CustomApp', {
     logger: new Rally.technicalservices.Logger(),
     items: [
         {xtype:'container',itemId:'button_box',margin: 5, padding: 5, defaults: { margin: 5 }},
+        {xtype:'container',itemId:'instructions_box',margin: 5, padding: 5, defaults: { margin: 5 }},
         {xtype:'container',layout: {type:'hbox'}, defaults:{ padding: 5, margin: 5 },items:[
-            {xtype:'container',itemId:'source_selection_box',flex:1},
-            {xtype:'container',itemId:'source_folder_box', flex:1},
-            {xtype:'container',itemId:'target_folder_box', flex:1},
-            {xtype:'container',itemId:'target_selection_box',flex:1}
+             {xtype:'container',layout: {type: 'vbox'}, itemId:'source_box',flex:1, items: [
+                    {xtype:'container',itemId:'source_selection_box', flex:1},
+                    {xtype:'container',itemId:'source_folder_box', flex:1}
+             ]}, 
+             {xtype:'container',layout: {type: 'vbox'},itemId:'target_box',flex:1, items:[
+                    {xtype:'container',itemId:'target_selection_box', flex:1},
+                    {xtype:'container',itemId:'target_folder_box', flex:1}
+             
+             ]}
         ]},
         {xtype:'tsinfolink'}
     ],
-    launch: function() {        
+    launch: function() {
         this._addProjectSelectors(this.down('#source_selection_box'),this.down('#target_selection_box'));
         this._addButtons();
     },
@@ -392,6 +469,12 @@ Ext.define('CustomApp', {
             disabled: true,
             scope: this,
             handler: this._copyFolders
+        });
+        this.down('#instructions_box').add({
+            xtype:'label',
+            text: 'Please select a source project and a target project.  To copy a subset of test folders from the source project, select a test folder.  All decendent folders and cases of the selected source folder will be copied to the target project.  To copy ALL test folders that belong to the source project, leave all folders unselected.',
+            style:'{color: #808080}',
+            id: 'instructions'
         });
     },
     _addProjectSelectors:function(source_container,target_container) {
@@ -429,7 +512,7 @@ Ext.define('CustomApp', {
         });
     },
     _showTestFolders:function(project,container,direction) {
-        container.removeAll();
+        container.removeAll(); 
         this.logger.log('_showTestFolders',direction);
         this.stores[direction] = null;
         this.projects[direction] = project;
@@ -466,8 +549,10 @@ Ext.define('CustomApp', {
             xtype: 'tstestfoldertree',
             topLevelStoreConfig: {
                 context: store.context
-            }
+            },
+            isSource: (direction=='source'),
         });
+        
     },
     _addGrid: function(store,container,direction) {
         container.removeAll();
@@ -486,7 +571,7 @@ Ext.define('CustomApp', {
         this.down('#copy_button').setDisabled(true);
         this.down('#clear_button').setDisabled(true);
         this.down('#add_button').setDisabled(true);
-
+        
         var target_store = this.stores['target'];
         var source_store = this.stores['source'];
         var target_project = this.projects['target'];
@@ -616,7 +701,18 @@ Ext.define('CustomApp', {
         });
         return deferred.promise;
     },
-    _copyFolders: function() {
+   _getSelectedFolderFamily: function(container)
+   {
+      //This function returns the parent folder plus any children, grandchildren, etc. for the item selected in the tree
+       var tree = this.down(container).down('tstestfoldertree');
+       if (tree.selectedRecords.length == 0)  //if no item is selected, then we will just get all the records 
+       { 
+           return this.stores['source'].getRecords();
+       }
+       
+       return tree.selectedRecords; 
+   },
+   _copyFolders: function() {
         var me = this;
         this.logger.log("_copyFolders");
         var target_store = this.stores['target'];
@@ -624,8 +720,9 @@ Ext.define('CustomApp', {
         var target_project = this.projects['target'];
         var source_project = this.projects['source'];
         
-        var source_folders = source_store.getRecords();
-        
+        //var source_folders = 
+        var source_folders = this._getSelectedFolderFamily('#source_folder_box');
+
         this.setLoading("Copying Folders");
         Rally.data.ModelFactory.getModel({
             type: 'TestFolder',
@@ -646,6 +743,7 @@ Ext.define('CustomApp', {
                         // result is an array of arrays
                         var new_records_by_original_ref = {};
                         Ext.Array.each(records, function(pair){
+                            //console.log (pair[0].get('_ref'), pair[1]);
                             new_records_by_original_ref[pair[0].get('_ref')] = pair[1];
                         });
                         
@@ -655,6 +753,9 @@ Ext.define('CustomApp', {
                         alert("There was a problem: " + error);
                     }
                 });
+            },
+            failiure: function(error){
+                 alert("There was a problem with source folders: " + error);
             }
         });
     },
@@ -1083,6 +1184,7 @@ Ext.define('CustomApp', {
     font-variant: normal;
     font-weight: normal;
 }
+ 
     </style>
 
 </head>
