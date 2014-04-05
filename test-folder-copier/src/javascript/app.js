@@ -6,28 +6,21 @@ Ext.define('CustomApp', {
     logger: new Rally.technicalservices.Logger(),
     items: [
         {xtype:'container',itemId:'button_box',margin: 5, padding: 5, defaults: { margin: 5 }},
+        {xtype:'container',itemId:'instructions_box',margin: 5, padding: 5, defaults: { margin: 5 }},
         {xtype:'container',layout: {type:'hbox'}, defaults:{ padding: 5, margin: 5 },items:[
              {xtype:'container',layout: {type: 'vbox'}, itemId:'source_box',flex:1, items: [
-            		{xtype:'container',itemId:'source_selection_box', flex:1},
-            		{xtype:'container',itemId:'source_folder_box', flex:1}
+                    {xtype:'container',itemId:'source_selection_box', flex:1},
+                    {xtype:'container',itemId:'source_folder_box', flex:1}
              ]}, 
              {xtype:'container',layout: {type: 'vbox'},itemId:'target_box',flex:1, items:[
                     {xtype:'container',itemId:'target_selection_box', flex:1},
-                    {xtype:'container',itemId:'target_folder_box', flex:1}                                                
+                    {xtype:'container',itemId:'target_folder_box', flex:1}
              
-             ]}       
-            		
-  
-            
-            
-            //{xtype:'container',itemId:'source_selection_box',flex:1},
-            //{xtype:'container',itemId:'source_folder_box', flex:1},
-            //{xtype:'container',itemId:'target_folder_box', flex:1},
-            //{xtype:'container',itemId:'target_selection_box',flex:1}
+             ]}
         ]},
         {xtype:'tsinfolink'}
     ],
-    launch: function() {        
+    launch: function() {
         this._addProjectSelectors(this.down('#source_selection_box'),this.down('#target_selection_box'));
         this._addButtons();
     },
@@ -55,6 +48,12 @@ Ext.define('CustomApp', {
             disabled: true,
             scope: this,
             handler: this._copyFolders
+        });
+        this.down('#instructions_box').add({
+            xtype:'label',
+            text: 'Please select a source project and a target project.  To copy a subset of test folders from the source project, select a test folder.  All decendent folders and cases of the selected source folder will be copied to the target project.  To copy ALL test folders that belong to the source project, leave all folders unselected.',
+            style:'{color: #808080}',
+            id: 'instructions'
         });
     },
     _addProjectSelectors:function(source_container,target_container) {
@@ -92,7 +91,7 @@ Ext.define('CustomApp', {
         });
     },
     _showTestFolders:function(project,container,direction) {
-        container.removeAll();
+        container.removeAll(); 
         this.logger.log('_showTestFolders',direction);
         this.stores[direction] = null;
         this.projects[direction] = project;
@@ -129,8 +128,10 @@ Ext.define('CustomApp', {
             xtype: 'tstestfoldertree',
             topLevelStoreConfig: {
                 context: store.context
-            }
+            },
+            isSource: (direction=='source'),
         });
+        
     },
     _addGrid: function(store,container,direction) {
         container.removeAll();
@@ -149,7 +150,7 @@ Ext.define('CustomApp', {
         this.down('#copy_button').setDisabled(true);
         this.down('#clear_button').setDisabled(true);
         this.down('#add_button').setDisabled(true);
-
+        
         var target_store = this.stores['target'];
         var source_store = this.stores['source'];
         var target_project = this.projects['target'];
@@ -279,7 +280,18 @@ Ext.define('CustomApp', {
         });
         return deferred.promise;
     },
-    _copyFolders: function() {
+   _getSelectedFolderFamily: function(container)
+   {
+      //This function returns the parent folder plus any children, grandchildren, etc. for the item selected in the tree
+       var tree = this.down(container).down('tstestfoldertree');
+       if (tree.selectedRecords.length == 0)  //if no item is selected, then we will just get all the records 
+       { 
+           return this.stores['source'].getRecords();
+       }
+       
+       return tree.selectedRecords; 
+   },
+   _copyFolders: function() {
         var me = this;
         this.logger.log("_copyFolders");
         var target_store = this.stores['target'];
@@ -287,8 +299,9 @@ Ext.define('CustomApp', {
         var target_project = this.projects['target'];
         var source_project = this.projects['source'];
         
-        var source_folders = source_store.getRecords();
-        
+        //var source_folders = 
+        var source_folders = this._getSelectedFolderFamily('#source_folder_box');
+
         this.setLoading("Copying Folders");
         Rally.data.ModelFactory.getModel({
             type: 'TestFolder',
@@ -309,6 +322,7 @@ Ext.define('CustomApp', {
                         // result is an array of arrays
                         var new_records_by_original_ref = {};
                         Ext.Array.each(records, function(pair){
+                            //console.log (pair[0].get('_ref'), pair[1]);
                             new_records_by_original_ref[pair[0].get('_ref')] = pair[1];
                         });
                         
@@ -318,6 +332,9 @@ Ext.define('CustomApp', {
                         alert("There was a problem: " + error);
                     }
                 });
+            },
+            failiure: function(error){
+                 alert("There was a problem with source folders: " + error);
             }
         });
     },
