@@ -122,14 +122,20 @@ Ext.define('CustomApp', {
             }
         });
     },
+    /*
+     * make collabisibility and expanded choice configurable
+     * 
+     */
     _addTree: function(store,container,direction) {
         container.removeAll();
         container.add({
             xtype: 'tstestfoldertree',
+            startExpanded: false,
+            collapsible: true,
             topLevelStoreConfig: {
                 context: store.context
             },
-            isSource: (direction=='source'),
+            isSource: (direction=='source')
         });
         
     },
@@ -181,7 +187,7 @@ Ext.define('CustomApp', {
                 this._copyFolders();
             },
             failure: function(error) {
-                deferred.reject("Problem removing folders " + error);
+                alert("Problem removing folders " + error);
             }
         });
         
@@ -203,15 +209,14 @@ Ext.define('CustomApp', {
                 load: function(store,folders){
                     var me = this;
                     var promises = [];
-                    var number_of_folders = folders.length;
-                    for ( var i=0;i<number_of_folders;i++ ) {
+                    this.logger.log("Folders to remove", folders.length);
+                    
+                    Ext.Array.each(folders, function(folder){
                         var f = function() {
-                            var folder = folders[0];
-                            folders.shift();
                             return me._deleteItem(folder, me);
                         };
                         promises.push(f);
-                    }
+                    });
                     Deft.Chain.sequence(promises).then({
                         success: function(records){
                             deferred.resolve([]);
@@ -267,31 +272,97 @@ Ext.define('CustomApp', {
     _deleteItem: function(item, scope){
         var deferred = Ext.create('Deft.Deferred');
         var me = scope;
-        me.logger.log("Delete from ", item.get('FormattedID'));
-        item.destroy({
-            callback: function(result, operation) {
-                if(operation.wasSuccessful()) {
-                    deferred.resolve([]);
-                } else {
-                    var message = item['Name'];
-                    deferred.reject("Could not destroy " + message);
+        if ( item && item !== undefined ) {
+            me.logger.log('Removing', item.get('FormattedID'), item);
+            
+            item.destroy({
+                callback: function(result, operation) {
+                    if(operation.wasSuccessful()) {
+                        deferred.resolve([]);
+                    } else {
+                        var message = item['Name'];
+                        deferred.reject("Could not destroy " + message);
+                    }
+                }
+            });
+        } else {
+            deferred.resolve();
+        }
+        return deferred.promise;
+    },
+    _getChildrenFolders: function(source_project,selected_record) {
+        var deferred = Ext.create('Deft.Deferred');
+        this.setLoading("Getting Test Folder Children..." + selected_record.get('FormattedID'));
+        var filters =  [{property:'Parent.ObjectID', value:selected_record.get('ObjectID')}];
+        
+        Ext.create('Rally.data.wsapi.Store',{
+            model:'TestFolder',
+            limit:'Infinity',
+            context: {
+                projectScopeDown: false,
+                projectScopeUp: false,
+                project: source_project.get('_ref')
+            },
+            filters: filters,
+            fetch: ['ObjectID','FormattedID','Name','Parent','Summary','TestCases'],
+            autoLoad: true,
+            listeners: {
+                scope: this,
+                load: function(store,testfolders){
+                    var me = this;
+                    var promises = [];
+                    Ext.Array.each(testfolders,function(testfolder){
+                        promises.push(this._getChildrenFolders(source_project,testfolder));
+                    },this);
+                    
+                    if ( promises.length > 0 ) {
+                        Deft.Promise.all(promises).then({
+                            success: function(records){
+                                deferred.resolve(Ext.Array.merge(Ext.Array.flatten(records),selected_record));
+                            },
+                            failure: function(error) {
+                                deferred.reject("Problem finding test folders " + error);
+                            }
+                        });
+                    } else {
+                        deferred.resolve(selected_record)
+                    }
                 }
             }
         });
-        return deferred.promise;
+        return deferred;
     },
-   _getSelectedFolderFamily: function(container)
-   {
-      //This function returns the parent folder plus any children, grandchildren, etc. for the item selected in the tree
-       var tree = this.down(container).down('tstestfoldertree');
-       if (tree.selectedRecords.length == 0)  //if no item is selected, then we will just get all the records 
-       { 
-           return this.stores['source'].getRecords();
-       }
+    _getSelectedFolderFamily: function(container)
+    {
+        var deferred = Ext.create('Deft.Deferred');
+        //This function returns the parent folder plus any children, grandchildren, etc. for the item selected in the tree
+        var tree = this.down(container).down('tstestfoldertree');
+        var selected_records = tree.selectedRecords;
+        
+        if (tree.selectedRecords.length == 0)  //if no item is selected, then we will just get all the records 
+        { 
+            selected_records = this.stores['source'].getRecords();
+            deferred.resolve(selected_records);
+        } else {
+            if ( selected_records[0].get('Children') && selected_records[0].get('Children').Count > 0 ) {
+                this._getChildrenFolders(this.projects['source'], selected_records[0]).then({
+                    success: function(records){
+                        deferred.resolve(records);
+                    },
+                    failure: function(error) {
+                        deferred.reject(error);
+                    }
+                });
+            } else {
+                deferred.resolve(selected_records);
+            }
+        }
        
-       return tree.selectedRecords; 
-   },
-   _copyFolders: function() {
+        console.log('selected records: ', selected_records);
+        
+        return deferred;
+    },
+    _copyFolders: function() {
         var me = this;
         this.logger.log("_copyFolders");
         var target_store = this.stores['target'];
@@ -300,44 +371,51 @@ Ext.define('CustomApp', {
         var source_project = this.projects['source'];
         
         //var source_folders = 
-        var source_folders = this._getSelectedFolderFamily('#source_folder_box');
-
-        this.setLoading("Copying Folders");
-        Rally.data.ModelFactory.getModel({
-            type: 'TestFolder',
-            success: function(model) {
-                var promises = [];
-                
-                Ext.Array.each( source_folders, function(source_folder){
-                    me.logger.log("Promise for ", source_folder.get('FormattedID'));
-                    // change so it can be sequenced (to prevent collisions)
-                    var f = function() {
-                        return me._createItem(model,source_folder,{},me);
-                    };
-                    
-                    promises.push(f);
-                });
-                Deft.Chain.sequence(promises).then({
-                    success: function(records) {
-                        // result is an array of arrays
-                        var new_records_by_original_ref = {};
-                        Ext.Array.each(records, function(pair){
-                            //console.log (pair[0].get('_ref'), pair[1]);
-                            new_records_by_original_ref[pair[0].get('_ref')] = pair[1];
-                        });
+        this._getSelectedFolderFamily('#source_folder_box').then({
+            scope: this,
+            success: function(source_folders) {
+                this.setLoading("Copying Folders");
+                Rally.data.ModelFactory.getModel({
+                    type: 'TestFolder',
+                    success: function(model) {
+                        var promises = [];
                         
-                        me._setParentFolders(source_folders,new_records_by_original_ref,me);
+                        Ext.Array.each( source_folders, function(source_folder){
+                            me.logger.log("Promise for ", source_folder.get('FormattedID'));
+                            // change so it can be sequenced (to prevent collisions)
+                            var f = function() {
+                                return me._createItem(model,source_folder,{},me);
+                            };
+                            
+                            promises.push(f);
+                        });
+                        Deft.Chain.sequence(promises).then({
+                            success: function(records) {
+                                // result is an array of arrays
+                                var new_records_by_original_ref = {};
+                                Ext.Array.each(records, function(pair){
+                                    //console.log (pair[0].get('_ref'), pair[1]);
+                                    new_records_by_original_ref[pair[0].get('_ref')] = pair[1];
+                                });
+                                
+                                me._setParentFolders(source_folders,new_records_by_original_ref,me);
+                            },
+                            failure: function(error) {
+                                alert("There was a problem: " + error);
+                            }
+                        });
                     },
-                    failure: function(error) {
-                        alert("There was a problem: " + error);
+                    failure: function(error){
+                         alert("There was a problem with source folders: " + error);
                     }
                 });
             },
-            failiure: function(error){
-                 alert("There was a problem with source folders: " + error);
+            failure: function(message) {
+                alert("THere was a problem with getting source folders: " + message);
             }
         });
     },
+    
     _createItem: function(model,source_item,change_fields, scope){
         var deferred = Ext.create('Deft.Deferred');
         var me = scope;
@@ -451,7 +529,7 @@ Ext.define('CustomApp', {
             type: 'TestCase',
             success: function(model) {
                 Ext.Array.each( source_folders, function(source_folder){
-                    me.logger.log(" TCs", source_folder.get('TestCases').Count);
+                    me.logger.log(" TCs", source_folder.get('TestCases').Count, source_folder);
                     if ( source_folder.get('TestCases').Count > 0 ) {
                         var f = function() {
                             return me._copyTestCasesForFolder(source_folder,new_records_by_original_ref[source_folder.get('_ref')],model, me);

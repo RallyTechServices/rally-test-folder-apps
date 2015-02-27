@@ -5,8 +5,13 @@ Ext.define('Rally.technicalservices.TestFolderTreeItem', {
 
     config: {
         displayedFields: ['Name']
-},
+    },
 
+    constructor: function(config) {
+        this.mergeConfig(config);
+        this.callParent([this.config]);
+    },
+        
     getContentTpl: function(){
         var me = this;
 
@@ -35,7 +40,11 @@ Ext.define('Rally.technicalservices.TestFolderTreeItem', {
         );
     },
     expandOrCollapse: function(){
-     //Override the function so that the tree cannot be collapsed 
+        if ( this.collapsible ) {
+            this.fireEvent(this.getExpanded() ? 'collapse' : 'expand', this);
+            this.setExpanded(!this.getExpanded());
+            this.toggleExpander();
+        }
     },
 
     _buildActionsGearHtml: function(){

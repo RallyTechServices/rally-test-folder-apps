@@ -18,6 +18,11 @@ Ext.define('Rally.technicalservices.TestFolderTree', {
         'Rally.data.util.ArtifactParentAttributeHelper'
     ],
 
+    config: {
+        collapsible: true,
+        startExpanded: false
+    },
+    
     constructor: function(config){
 
         config = Ext.Object.merge({
@@ -50,7 +55,8 @@ Ext.define('Rally.technicalservices.TestFolderTree', {
             },
             selectedItem: null,
             selectedRecords: [],  //start out with all records....
-            isSource: false
+            isSource: false,
+            collapsible: false
         }, config);
 
         this.callParent([config]);
@@ -99,7 +105,8 @@ Ext.define('Rally.technicalservices.TestFolderTree', {
         var config = {
             selectable: this.isSource,
             canDrag: false,
-            expanded: true  // JM: you are genius!
+            expanded: this.startExpanded,
+            collapsible: this.collapsible
         };
 
         if(this._isTestFolder(record)){
