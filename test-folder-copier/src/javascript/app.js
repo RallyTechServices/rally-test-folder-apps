@@ -35,6 +35,14 @@ Ext.define('CustomApp', {
         });
         this.down('#button_box').add({
             xtype:'rallybutton',
+            itemId: 'move_button',
+            text:'Move to Target',
+            disabled: true,
+            scope: this,
+            handler: this._moveFolders
+        });
+        this.down('#button_box').add({
+            xtype:'rallybutton',
             itemId:'clear_button',
             text:'Clear Target & Copy',
             scope: this,
@@ -156,6 +164,7 @@ Ext.define('CustomApp', {
         this.down('#copy_button').setDisabled(true);
         this.down('#clear_button').setDisabled(true);
         this.down('#add_button').setDisabled(true);
+        this.down('#move_button').setDisabled(true);
         
         var target_store = this.stores['target'];
         var source_store = this.stores['source'];
@@ -164,6 +173,7 @@ Ext.define('CustomApp', {
         
         if ( target_store && source_store && source_project.get('_ref') != target_project.get('_ref') ) {
             if ( source_store.getTotalCount() > 0 ) {
+                this.down('#move_button').setDisabled(false);
                 if ( target_store.getTotalCount() == 0 ) {
                     this.down('#copy_button').setDisabled(false);
                 } else {
@@ -357,9 +367,7 @@ Ext.define('CustomApp', {
                 deferred.resolve(selected_records);
             }
         }
-       
-        console.log('selected records: ', selected_records);
-        
+               
         return deferred;
     },
     _copyFolders: function() {
@@ -414,6 +422,211 @@ Ext.define('CustomApp', {
                 alert("THere was a problem with getting source folders: " + message);
             }
         });
+    },
+    
+    _moveFolders: function() {
+        var me = this;
+        this.logger.log("_moveFolders");
+        var target_store = this.stores['target'];
+        var source_store = this.stores['source'];
+        var target_project = this.projects['target'];
+        var source_project = this.projects['source'];
+        
+        //var source_folders = 
+        this._getSelectedFolderFamily('#source_folder_box').then({
+            scope: this,
+            success: function(source_folders) {
+                this.setLoading("Collecting Folders...");
+                Rally.data.ModelFactory.getModel({
+                    type: 'TestFolder',
+                    success: function(model) {
+                        var promises = [];
+                        var folders_by_parent = {};
+                        
+                        Ext.Array.each( source_folders, function(source_folder){
+                            me.logger.log("Promise for ", source_folder.get('FormattedID'));
+                            // change so it can be sequenced (to prevent collisions)
+                            var parent = source_folder.get('Parent');
+                            console.log(parent);
+                            
+                            if ( parent && parent._ref ) {
+                                folders_by_parent[parent._ref] = source_folder;
+                            }
+                            var f = function() {
+                                return me._moveFolder(source_folder,target_project,me);
+                            };
+                            
+                            promises.push(f);
+                        });
+                        Deft.Chain.sequence(promises).then({
+                            success: function(records) {
+                                me._setParentFoldersForHash(folders_by_parent,me).then({
+                                    success: function() {
+                                        me._finishAndRedisplay(me);
+                                    },
+                                    failure: function(msg) {
+                                        alert("There was a problem resetting test folder hierarchy: " + msg);
+                                        me._finishAndRedisplay(me);
+                                    }
+                                });
+                            },
+                            failure: function(error) {
+                                alert("There was a problem: " + error);
+                            }
+                        });
+                    },
+                    failure: function(error){
+                         alert("There was a problem with source folders: " + error);
+                    }
+                });
+            },
+            failure: function(message) {
+                alert("THere was a problem with getting source folders: " + message);
+            }
+        });
+    },
+    _moveTestCasesForFolder: function(source_folder, target_project, me) {
+        var deferred = Ext.create('Deft.Deferred');
+        me.setLoading("Copy Test Cases For Folder " + source_folder.get('FormattedID'));
+
+        Ext.create('Rally.data.wsapi.Store',{
+            model: 'TestCase',
+            limit: 'Infinity',
+            filters: [{property:'TestFolder.ObjectID',value:source_folder.get('ObjectID')}],
+            fetch: true,
+            autoLoad: true,
+            context: {
+                project: null
+            },
+            listeners: {
+                scope: me,
+                load: function(store,testcases) {
+                    me.logger.log("Test Cases: ", testcases);
+                    var promises = [];
+                    Ext.Array.each(testcases, function(testcase) {
+                        me.logger.log("FormattedID: ", testcase.get('FormattedID'));
+                        var f = function() {
+                            return me._moveTestCase(testcase, source_folder, target_project, me);
+                        };
+                        promises.push(f);
+                    });
+                    Deft.Chain.sequence(promises).then({
+                        success: function(records){ 
+                            deferred.resolve(records);
+                        },
+                        failure: function(error) {
+                            deferred.reject(error);
+                        }
+                    });
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    
+    _moveTestCase: function(test_case,source_folder, target_project,me) {
+        var deferred = Ext.create('Deft.Deferred');
+        me.logger.log("Move ", test_case.get('FormattedID')," to ",target_project.get("Name"));
+        
+        test_case.set("Project", target_project.get('_ref'));
+        test_case.save({
+            callback: function(result,operation){
+                me.logger.log("--- moved ", test_case.get('FormattedID'), " to ", target_project.get("Name"));
+                if(operation.wasSuccessful()) {
+                    deferred.resolve(result);
+                } else {
+                    var message = "";
+                    if ( test_case.get("FormattedID") ) {
+                        message += "\n" + test_case.get("FormattedID");
+                    }
+                    
+                    if ( operation.error.errors && operation.error.errors.length > 0 ) {
+                        message += "\n" + operation.error.errors[0];
+                    }
+                    me.logger.log(" !! ERROR ", message, operation );
+                    deferred.reject("Could not save " + message);
+                }
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    _moveFolder: function(source_folder,target_project,me) {
+        var deferred = Ext.create('Deft.Deferred');
+        me.logger.log("Move ", source_folder.get('FormattedID')," to ",target_project.get("Name"));
+        
+        this._moveTestCasesForFolder(source_folder,target_project,me).then({
+            success: function(testcases) {
+                me.logger.log("Moved testcases: ", testcases);
+                
+                source_folder.set("TestCases", "");
+                source_folder.set("Parent", "");
+                source_folder.set("Project", target_project.get('_ref'));
+                me.logger.log("----- moving ", source_folder.get('FormattedID'), " to ", target_project.get("Name"));
+
+                source_folder.save({
+                    callback: function(result,operation){
+                        if(operation.wasSuccessful()) {
+                            var promises = [];
+                            Ext.Array.each( testcases, function(testcase) {
+                                promises.push( function() { me._reparentTestCase(testcase,source_folder,me); });
+                            });
+                            
+                            me.logger.log("Promises",promises.length);
+                            
+                            if ( promises.length === 0 ) {
+                                deferred.resolve([]);
+                            } else {
+                                Deft.Chain.sequence(promises).then({
+                                    success: function(result) {
+                                        deferred.resolve(result);
+                                    },
+                                    failure: function(msg) {
+                                        deferred.reject(msg);
+                                    }
+                                });
+                            }
+                        } else {
+                            var message = "";
+                            if ( source_folder.get("FormattedID") ) {
+                                message += "\n" + source_folder.get("FormattedID");
+                            }
+                            
+                            if ( operation.error.errors && operation.error.errors.length > 0 ) {
+                                message += "\n" + operation.error.errors[0];
+                            }
+                            me.logger.log(" !! ERROR ", message, operation );
+                            deferred.reject("Could not save " + message);
+                        }
+                    }
+                });
+            },
+            failure: function(msg) {
+                deferred.reject(msg);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    _reparentTestCase: function(testcase,source_folder,me){
+        me.logger.log("_reparentTestCase",testcase,source_folder);
+        var deferred = Ext.create('Deft.Deferred');
+        
+        testcase.set("TestFolder", source_folder.get('_ref'));
+        
+        testcase.save({
+            callback: function(result, operation) {
+                if(operation.wasSuccessful()) {
+                    deferred.resolve([result]);
+                } else {
+                    deferred.reject("Could not set folder on " + testcase.get('FormattedID'));
+                }
+            }
+        });
+        
+        return deferred.promise;
     },
     
     _createItem: function(model,source_item,change_fields, scope){
@@ -488,10 +701,54 @@ Ext.define('CustomApp', {
             }
         });
     },
+    _setParentFoldersForHash:function(folders_by_parent,me){
+        me.logger.log("_setParentFoldersForHash");
+        var deferred = Ext.create('Deft.Deferred');
+
+        me.setLoading("Restitching Folder Hierarchy...");
+        var promises = [];
+        Ext.Object.each(folders_by_parent, function(parent,folder){
+            folder.set("Parent",parent);
+            promises.push( function() {
+                me._saveFolder(folder);
+            } );
+        });
+        
+        if ( promises.length === 0 ) {
+            deferred.resolve([]);
+        } else {
+            Deft.Chain.sequence(promises).then({
+                success: function(records) {
+                    me.logger.log("done with set parent folder promises");
+                    deferred.resolve(records);
+                },
+                failure: function(error) {
+                    deferred(error);
+                }
+            });
+        }
+        
+        return deferred.promise;
+    },
+
+    _saveFolder: function(folder) {
+        var deferred = Ext.create('Deft.Deferred');
+        folder.save({
+            callback: function(result, operation) {
+                if(operation.wasSuccessful()) {
+                    deferred.resolve([result]);
+                } else {
+                    deferred.reject("Could not save " + folder.get('FormattedID'));
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    
     _setParentFolder: function(original_record,new_records_by_original_ref,scope){
         var me = scope;
         me.logger.log("_setParentFolder",original_record);
-        this.setLoading("Setting Parent Folders");
+        this.setLoading("Setting Parent Folder");
         var deferred = Ext.create('Deft.Deferred');
         var original_parent = original_record.get('Parent');
         var original_ref = original_record.get('_ref');
@@ -571,6 +828,7 @@ Ext.define('CustomApp', {
         });
     },
     _finishAndRedisplay: function(scope) {
+        scope._showTestFolders(scope.projects['source'],scope.down('#source_folder_box'),'source');
         scope._showTestFolders(scope.projects['target'],scope.down('#target_folder_box'),'target');
         scope.setLoading(false);
     },
