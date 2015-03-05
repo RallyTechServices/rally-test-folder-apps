@@ -49,14 +49,14 @@ Ext.define('CustomApp', {
             disabled: true,
             handler: this._clearAndCopyFolders
         });
-        this.down('#button_box').add({
-            xtype:'rallybutton',
-            text:'Add to Target',
-            itemId:'add_button',
-            disabled: true,
-            scope: this,
-            handler: this._copyFolders
-        });
+//        this.down('#button_box').add({
+//            xtype:'rallybutton',
+//            text:'Add to Target',
+//            itemId:'add_button',
+//            disabled: true,
+//            scope: this,
+//            handler: this._copyFolders
+//        });
         this.down('#instructions_box').add({
             xtype:'label',
             text: 'Please select a source project and a target project.  To copy a subset of test folders from the source project, select a test folder.  All decendent folders and cases of the selected source folder will be copied to the target project.  To copy ALL test folders that belong to the source project, leave all folders unselected.',
@@ -163,7 +163,7 @@ Ext.define('CustomApp', {
     _updateButtonStates: function() {
         this.down('#copy_button').setDisabled(true);
         this.down('#clear_button').setDisabled(true);
-        this.down('#add_button').setDisabled(true);
+        //this.down('#add_button').setDisabled(true);
         this.down('#move_button').setDisabled(true);
         
         var target_store = this.stores['target'];
@@ -171,14 +171,13 @@ Ext.define('CustomApp', {
         var target_project = this.projects['target'];
         var source_project = this.projects['source'];
         
-        if ( target_store && source_store && source_project.get('_ref') != target_project.get('_ref') ) {
+//        if ( target_store && source_store && source_project.get('_ref') != target_project.get('_ref') ) {
+        if ( target_store && source_store ) {
+            this.down('#copy_button').setDisabled(false);
+            this.down('#move_button').setDisabled(false);
             if ( source_store.getTotalCount() > 0 ) {
-                this.down('#move_button').setDisabled(false);
-                if ( target_store.getTotalCount() == 0 ) {
-                    this.down('#copy_button').setDisabled(false);
-                } else {
+                if ( source_project.get('_ref') != target_project.get('_ref') ) {
                     this.down('#clear_button').setDisabled(false);
-                    this.down('#add_button').setDisabled(false);
                 }
             }
         }
