@@ -172,11 +172,11 @@ Ext.define('CustomApp', {
         var source_project = this.projects['source'];
         
 //        if ( target_store && source_store && source_project.get('_ref') != target_project.get('_ref') ) {
-        if ( target_store && source_store ) {
+        if ( target_store && source_store && source_store.getTotalCount() > 0) {
             this.down('#copy_button').setDisabled(false);
-            this.down('#move_button').setDisabled(false);
-            if ( source_store.getTotalCount() > 0 ) {
-                if ( source_project.get('_ref') != target_project.get('_ref') ) {
+            if ( source_project.get('_ref') != target_project.get('_ref') ) {
+                this.down('#move_button').setDisabled(false);
+                if ( target_store.getTotalCount() > 0 ) {
                     this.down('#clear_button').setDisabled(false);
                 }
             }

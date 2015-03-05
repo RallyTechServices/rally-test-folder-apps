@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Mar 04 2015 19:44:58 GMT-0800 (PST) -->
+    <!--  Build Date: Wed Mar 04 2015 19:48:14 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Mar 04 2015 19:44:58 GMT-0800 (PST)";
-        var CHECKSUM = 122330821955;
+        var APP_BUILD_DATE = "Wed Mar 04 2015 19:48:14 GMT-0800 (PST)";
+        var CHECKSUM = 122499617322;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -609,11 +609,11 @@ Ext.define('CustomApp', {
         var source_project = this.projects['source'];
         
 //        if ( target_store && source_store && source_project.get('_ref') != target_project.get('_ref') ) {
-        if ( target_store && source_store ) {
+        if ( target_store && source_store && source_store.getTotalCount() > 0) {
             this.down('#copy_button').setDisabled(false);
-            this.down('#move_button').setDisabled(false);
-            if ( source_store.getTotalCount() > 0 ) {
-                if ( source_project.get('_ref') != target_project.get('_ref') ) {
+            if ( source_project.get('_ref') != target_project.get('_ref') ) {
+                this.down('#move_button').setDisabled(false);
+                if ( target_store.getTotalCount() > 0 ) {
                     this.down('#clear_button').setDisabled(false);
                 }
             }
