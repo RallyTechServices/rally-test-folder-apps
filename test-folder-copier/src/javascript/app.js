@@ -64,7 +64,7 @@ Ext.define('CustomApp', {
             id: 'instructions'
         });
     },
-    _addProjectSelectors:function(source_container,target_container) {
+    _addProjectSelectors:function(source_container,target_container) {        
         var workspace = this.getContext().getWorkspace();
         this.logger.log('_addProjectSelectors',workspace);
         this.logger.log(' project', this.getContext().getProject()._ref);
@@ -75,6 +75,7 @@ Ext.define('CustomApp', {
             xtype: 'rallyprojectpicker',
             value: this.getContext().getProject()._ref,
             workspace: workspace._ref,
+            maxHeight: 300,
             listeners: {
                 scope: this,
                 change: function(picker) {
@@ -89,6 +90,7 @@ Ext.define('CustomApp', {
             labelAlign: 'top',
             xtype: 'rallyprojectpicker',
             workspace: workspace._ref,
+            maxHeight: 300,
             listeners: {
                 scope: this,
                 change: function(picker) {

@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Mar 04 2015 19:48:14 GMT-0800 (PST) -->
+    <!--  Build Date: Mon Mar 16 2015 14:41:48 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Mar 04 2015 19:48:14 GMT-0800 (PST)";
-        var CHECKSUM = 122499617322;
+        var APP_BUILD_DATE = "Mon Mar 16 2015 14:41:48 GMT-0700 (PDT)";
+        var CHECKSUM = 127805320776;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -15,6 +15,47 @@
     <script type="text/javascript">
         Rally.onReady(function() {
              
+ Ext.override(Rally.ui.picker.project.ProjectPicker, {
+    createPicker: function () {
+
+        var items = [];
+
+        var height = this.maxHeight || 300;
+        
+        if (this.getShowMostRecentlyUsedProjects()) {
+            this.recents = this._createMostRecentlyUsedProjects();
+            items.push(this.recents);
+            height = height - 200;
+        }
+
+        console.log("max:", this.maxHeight);
+        var container = items.push({ 
+            xtype:'container',
+            height: height,
+            maxHeight: height,  // override to keep from freezing on the bottom
+            autoScroll:true, 
+            items: [this.tree]
+        });
+
+        if (this.getShowProjectScopeUpAndDown()) {
+            this.projectScopeUpDownField = this._createProjectScopeUpDownField();
+            items.push(this.projectScopeUpDownField);
+        }
+
+        
+        this.picker = Ext.widget('container', {
+            cls: 'rui-project-picker-container',
+            itemId: 'projectPickerContainer',
+            floating: true,
+            shadow: false,
+            hidden: true,
+            minWidth: 250,
+            items: items
+        });
+
+        return this.picker;
+    }
+ });
 /**
  * A link that pops up a version dialog box
  */
@@ -501,7 +542,7 @@ Ext.define('CustomApp', {
             id: 'instructions'
         });
     },
-    _addProjectSelectors:function(source_container,target_container) {
+    _addProjectSelectors:function(source_container,target_container) {        
         var workspace = this.getContext().getWorkspace();
         this.logger.log('_addProjectSelectors',workspace);
         this.logger.log(' project', this.getContext().getProject()._ref);
@@ -512,6 +553,7 @@ Ext.define('CustomApp', {
             xtype: 'rallyprojectpicker',
             value: this.getContext().getProject()._ref,
             workspace: workspace._ref,
+            maxHeight: 300,
             listeners: {
                 scope: this,
                 change: function(picker) {
@@ -526,6 +568,7 @@ Ext.define('CustomApp', {
             labelAlign: 'top',
             xtype: 'rallyprojectpicker',
             workspace: workspace._ref,
+            maxHeight: 300,
             listeners: {
                 scope: this,
                 change: function(picker) {
