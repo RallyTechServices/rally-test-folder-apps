@@ -49,14 +49,6 @@ Ext.define('CustomApp', {
             disabled: true,
             handler: this._clearAndCopyFolders
         });
-//        this.down('#button_box').add({
-//            xtype:'rallybutton',
-//            text:'Add to Target',
-//            itemId:'add_button',
-//            disabled: true,
-//            scope: this,
-//            handler: this._copyFolders
-//        });
         this.down('#instructions_box').add({
             xtype:'label',
             text: 'Please select a source project and a target project.  To copy a subset of test folders from the source project, select a test folder.  All decendent folders and cases of the selected source folder will be copied to the target project.  To copy ALL test folders that belong to the source project, leave all folders unselected.',
@@ -391,7 +383,7 @@ Ext.define('CustomApp', {
                         
                         Ext.Array.each( source_folders, function(source_folder){
                             me.logger.log("Promise for ", source_folder.get('FormattedID'));
-                            // change so it can be sequenced (to prevent collisions)
+                            // sequenced (to prevent collisions)
                             var f = function() {
                                 return me._createItem(model,source_folder,{},me);
                             };
@@ -564,6 +556,14 @@ Ext.define('CustomApp', {
                 source_folder.set("TestCases", "");
                 source_folder.set("Parent", "");
                 source_folder.set("Project", target_project.get('_ref'));
+                
+                // TODO
+                var target_tree = me.down('#target_folder_box').down('tstestfoldertree');
+                var selected_records = target_tree.selectedRecords;
+                if ( selected_records.length > 0 ) {
+                    me.logger.log("target parent", selected_records);
+                    source_folder.set('Parent',selected_records[0].get('_ref')); 
+                }
                 me.logger.log("----- moving ", source_folder.get('FormattedID'), " to ", target_project.get("Name"));
 
                 source_folder.save({
@@ -679,6 +679,18 @@ Ext.define('CustomApp', {
         delete item['_refObjectName'];
         // set project
         item['Project'] = this.projects['target'].get('_ref');
+        // does it get a parent?
+        if (original_item['_type'] == 'testfolder' ) {
+            //TODO     
+            var app = Rally.getApp();
+            
+            var tree = app.down('#target_folder_box').down('tstestfoldertree');
+            var selected_records = tree.selectedRecords;
+            if ( selected_records.length > 0 ) {
+                app.logger.log("target parent", selected_records);
+                change_fields['Parent'] = selected_records[0].get('_ref'); 
+            }
+        }
         
         return Ext.Object.merge(item, change_fields);;
     },

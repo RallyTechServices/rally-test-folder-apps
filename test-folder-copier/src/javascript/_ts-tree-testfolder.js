@@ -103,7 +103,8 @@ Ext.define('Rally.technicalservices.TestFolderTree', {
 
     treeItemConfigForRecordFn: function(record){
         var config = {
-            selectable: this.isSource,
+            //selectable: this.isSource,
+            selectable: true,
             canDrag: false,
             expanded: this.startExpanded,
             collapsible: this.collapsible
