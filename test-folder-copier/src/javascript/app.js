@@ -487,7 +487,7 @@ Ext.define('CustomApp', {
     },
     _moveTestCasesForFolder: function(source_folder, target_project, me) {
         var deferred = Ext.create('Deft.Deferred');
-        me.setLoading("Copy Test Cases For Folder " + source_folder.get('FormattedID'));
+        me.setLoading("Move Test Cases For Folder " + source_folder.get('FormattedID'));
 
         Ext.create('Rally.data.wsapi.Store',{
             model: 'TestCase',

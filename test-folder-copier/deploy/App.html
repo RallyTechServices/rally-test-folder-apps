@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sun Mar 22 2015 11:21:50 GMT-0700 (PDT) -->
+    <!--  Build Date: Sun Mar 22 2015 12:09:58 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Mar 22 2015 11:21:50 GMT-0700 (PDT)";
-        var CHECKSUM = 133041974546;
+        var APP_BUILD_DATE = "Sun Mar 22 2015 12:09:58 GMT-0700 (PDT)";
+        var CHECKSUM = 133041839733;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -966,7 +966,7 @@ Ext.define('CustomApp', {
     },
     _moveTestCasesForFolder: function(source_folder, target_project, me) {
         var deferred = Ext.create('Deft.Deferred');
-        me.setLoading("Copy Test Cases For Folder " + source_folder.get('FormattedID'));
+        me.setLoading("Move Test Cases For Folder " + source_folder.get('FormattedID'));
 
         Ext.create('Rally.data.wsapi.Store',{
             model: 'TestCase',
