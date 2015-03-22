@@ -399,6 +399,7 @@ Ext.define('CustomApp', {
                                     new_records_by_original_ref[pair[0].get('_ref')] = pair[1];
                                 });
                                 
+                                
                                 me._setParentFolders(source_folders,new_records_by_original_ref,me);
                             },
                             failure: function(error) {
@@ -425,7 +426,6 @@ Ext.define('CustomApp', {
         var target_project = this.projects['target'];
         var source_project = this.projects['source'];
         
-        //var source_folders = 
         this._getSelectedFolderFamily('#source_folder_box').then({
             scope: this,
             success: function(source_folders) {
@@ -440,10 +440,14 @@ Ext.define('CustomApp', {
                             me.logger.log("Promise for ", source_folder.get('FormattedID'));
                             // change so it can be sequenced (to prevent collisions)
                             var parent = source_folder.get('Parent');
-                            console.log(parent);
                             
+                            me.logger.log('parent', parent);
                             if ( parent && parent._ref ) {
-                                folders_by_parent[parent._ref] = source_folder;
+                                me.logger.log(' --', parent._ref);
+                                if ( !folders_by_parent[parent._ref] ) {
+                                    folders_by_parent[parent._ref]=[];
+                                }
+                                folders_by_parent[parent._ref].push(source_folder);
                             }
                             var f = function() {
                                 return me._moveFolder(source_folder,target_project,me);
@@ -451,6 +455,9 @@ Ext.define('CustomApp', {
                             
                             promises.push(f);
                         });
+                        
+                        me.logger.log("Folders by Parent: ", folders_by_parent);
+                        
                         Deft.Chain.sequence(promises).then({
                             success: function(records) {
                                 me._setParentFoldersForHash(folders_by_parent,me).then({
@@ -714,17 +721,20 @@ Ext.define('CustomApp', {
             }
         });
     },
+    // folders_by_parent key = parent ref, value = array of child folders
     _setParentFoldersForHash:function(folders_by_parent,me){
         me.logger.log("_setParentFoldersForHash");
         var deferred = Ext.create('Deft.Deferred');
 
         me.setLoading("Restitching Folder Hierarchy...");
         var promises = [];
-        Ext.Object.each(folders_by_parent, function(parent,folder){
-            folder.set("Parent",parent);
-            promises.push( function() {
-                me._saveFolder(folder);
-            } );
+        Ext.Object.each(folders_by_parent, function(parent,folders){
+            Ext.Array.each( folders, function(folder){
+                folder.set("Parent",parent);
+                promises.push( function() {
+                    me._saveFolder(folder);
+                } );
+            });
         });
         
         if ( promises.length === 0 ) {
