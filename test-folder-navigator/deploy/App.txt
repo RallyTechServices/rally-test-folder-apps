@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Navigator</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Mar 23 2015 14:56:06 GMT-0700 (PDT) -->
+    <!--  Build Date: Mon Mar 23 2015 15:13:34 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Mar 23 2015 14:56:06 GMT-0700 (PDT)";
-        var CHECKSUM = 1168071801;
+        var APP_BUILD_DATE = "Mon Mar 23 2015 15:13:34 GMT-0700 (PDT)";
+        var CHECKSUM = 1168069868;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
