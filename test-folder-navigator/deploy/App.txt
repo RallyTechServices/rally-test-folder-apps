@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Navigator</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sun Mar 29 2015 17:10:01 GMT-0700 (PDT) -->
+    <!--  Build Date: Sun Mar 29 2015 19:58:15 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Mar 29 2015 17:10:01 GMT-0700 (PDT)";
-        var CHECKSUM = 11751982719;
+        var APP_BUILD_DATE = "Sun Mar 29 2015 19:58:15 GMT-0700 (PDT)";
+        var CHECKSUM = 16707172655;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -15,6 +15,76 @@
     <script type="text/javascript">
         Rally.onReady(function() {
              
+Ext.define('Rally.technicalservices.ui.menu.item.CascadeDeleteMenuItem', {
+    extend:  Rally.ui.menu.item.RecordMenuItem ,
+    alias: 'widget.tsrecordmenuitemcascadedelete',
+
+    clickHideDelay: 1,
+
+    config: {
+
+        /**
+         * @cfg {Rally.data.wsapi.Model}
+         * The record of the menu
+         */
+        record: undefined,
+
+        /**
+         * @cfg {Function}
+         * This is called when a menu item is clicked
+         */
+        handler: function () {
+            this._onCascadeDeleteClicked();
+        },
+
+        /**
+         * @cfg {Function}
+         *
+         * A function that should return true if this menu item should show.
+         * @param record {Rally.data.wsapi.Model}
+         * @return {Boolean}
+         */
+        predicate: function (record) {
+            return true;
+        },
+
+        /**
+         * @cfg {String}
+         * The display string
+         */
+        text: 'Cascade Delete'
+
+    },
+
+    constructor:function (config) {
+        this.initConfig(config);
+        console.log('here');
+        this.callParent(arguments);
+    },
+    
+    _onCascadeDeleteClicked: function() {
+        console.log('click!');
+        var confirm_dialog = this._launchConfirmDialog();
+        confirm_dialog.on('confirm',this._doDelete, this);
+    },
+    
+    _doDelete: function() {
+        alert('woooo-hoo!');
+    },
+    
+    _launchConfirmDialog: function() {
+        return Ext.create('Rally.ui.dialog.ConfirmDialog', {
+            title: 'Cascade Delete',
+            message: "Are you sure? <br/>This will delete this folder's descendant folders and test cases.  THERE IS NO UNDO.",
+            confirmLabel: 'OK',
+            listeners: {
+                confirm: function(){
+                 //do something awesome
+                }
+            }
+        });
+    }
+});
 /**
  * A link that pops up a version dialog box
  */
@@ -157,6 +227,35 @@ Ext.define('Rally.technicalservices.Logger',{
 
 });
 
+Ext.override(Rally.ui.menu.DefaultRecordMenu, {
+    _getMenuItems: function() {
+        var record = this.getRecord();
+        var items = [];
+        
+        items.push({
+            xtype: 'tsrecordmenuitemcascadedelete',
+            view: this.view,
+            record: record
+        });
+        
+        return items;
+    }
+});
+
+Ext.override(Rally.ui.menu.TestCaseRecordMenu, {
+    _getMenuItems: function() {
+        var record = this.getRecord();
+        var items = [];
+        
+//        items.push({
+//            xtype: 'tsrecordmenuitemcascadedelete',
+//            view: this.view,
+//            record: record
+//        });
+        
+        return items;
+    }
+});
 Ext.override(Ext.data.TreeStore,{
     load: function(options) {        
         options = options || {};
@@ -594,6 +693,17 @@ Ext.define('TestFolderNavigator', {
 
         logger: Ext.create('Rally.technicalservices.Logger'),
         
+        _applyBoardFilters: function(board, filterObj) {
+            console.log('filters',filterObj);
+            
+            board.refresh({
+                types: filterObj.types,
+                storeConfig: {filters: this._getConfiguredFilters(filterObj.filters || [], filterObj.types || [])}
+            });
+        },
+        
+       
+        
         getPermanentFilters: function () {
             return [
                 Rally.data.wsapi.Filter.or([
@@ -605,7 +715,8 @@ Ext.define('TestFolderNavigator', {
         getFieldPickerConfig: function () {
             var config = this.callParent(arguments);
             config.gridFieldBlackList = _.union(config.gridFieldBlackList, [
-                'VersionId'
+                'VersionId',
+                'Parent'
             ]);
             return _.merge(config, {
                 gridAlwaysSelectedValues: ['FormattedID','Name']
@@ -665,6 +776,64 @@ Ext.define('TestFolderNavigator', {
                 openEditorAfterAddFailure: false,
                 minWidth: 800
             });
+        },
+        
+        getGridBoardPlugins: function () {
+            return [
+//                {
+//                    ptype: 'rallygridboardaddnew',
+//                    context: this.getContext()
+//                },
+                {
+                    ptype: 'rallygridboardcustomfiltercontrol',
+                    filterChildren: false,
+                    filterControlConfig: _.merge({
+                        modelNames: this.modelNames,
+                        stateful: true,
+                        stateId: this.getScopedStateId('custom-filter-button')
+                    }, this.getFilterControlConfig()),
+                    showOwnerFilter: false,
+                    ownerFilterControlConfig: {
+                        stateful: true,
+                        stateId: this.getScopedStateId('owner-filter')
+                    }
+                },
+                _.merge({
+                    ptype: 'rallygridboardfieldpicker',
+                    headerPosition: 'left'
+                }, this.getFieldPickerConfig())
+            ]
+            .concat(this.enableGridBoardToggle ? 'rallygridboardtoggleable' : [])
+            .concat(this.getActionsMenuConfig());
+        },
+
+        getGridConfig: function (options) {
+            return {
+                xtype: 'rallytreegrid',
+                alwaysShowDefaultColumns: false,
+                columnCfgs: this.getColumnCfgs(),
+                enableBulkEdit: false,
+                enableRanking: Rally.data.ModelTypes.areArtifacts(this.modelNames),
+                expandAllInColumnHeaderEnabled: true,
+                plugins: this.getGridPlugins(),
+                stateId: this.getScopedStateId('grid'),
+                stateful: true,
+                store: options && options.gridStore,
+                storeConfig: {
+                    filters: this.getPermanentFilters()
+                },
+                summaryColumns: [],
+                listeners: {
+                    afterrender: this.publishComponentReady,
+                    storeload: {
+                        fn: function () {
+                            this.fireEvent('contentupdated', this);
+                        },
+                        single: true
+                    },
+                    scope: this
+                }
+            };
         }
     });
             

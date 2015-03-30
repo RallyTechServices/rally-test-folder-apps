@@ -9,6 +9,17 @@ Ext.define('TestFolderNavigator', {
 
         logger: Ext.create('Rally.technicalservices.Logger'),
         
+        _applyBoardFilters: function(board, filterObj) {
+            console.log('filters',filterObj);
+            
+            board.refresh({
+                types: filterObj.types,
+                storeConfig: {filters: this._getConfiguredFilters(filterObj.filters || [], filterObj.types || [])}
+            });
+        },
+        
+       
+        
         getPermanentFilters: function () {
             return [
                 Rally.data.wsapi.Filter.or([
@@ -20,7 +31,8 @@ Ext.define('TestFolderNavigator', {
         getFieldPickerConfig: function () {
             var config = this.callParent(arguments);
             config.gridFieldBlackList = _.union(config.gridFieldBlackList, [
-                'VersionId'
+                'VersionId',
+                'Parent'
             ]);
             return _.merge(config, {
                 gridAlwaysSelectedValues: ['FormattedID','Name']
@@ -80,5 +92,63 @@ Ext.define('TestFolderNavigator', {
                 openEditorAfterAddFailure: false,
                 minWidth: 800
             });
+        },
+        
+        getGridBoardPlugins: function () {
+            return [
+//                {
+//                    ptype: 'rallygridboardaddnew',
+//                    context: this.getContext()
+//                },
+                {
+                    ptype: 'rallygridboardcustomfiltercontrol',
+                    filterChildren: false,
+                    filterControlConfig: _.merge({
+                        modelNames: this.modelNames,
+                        stateful: true,
+                        stateId: this.getScopedStateId('custom-filter-button')
+                    }, this.getFilterControlConfig()),
+                    showOwnerFilter: false,
+                    ownerFilterControlConfig: {
+                        stateful: true,
+                        stateId: this.getScopedStateId('owner-filter')
+                    }
+                },
+                _.merge({
+                    ptype: 'rallygridboardfieldpicker',
+                    headerPosition: 'left'
+                }, this.getFieldPickerConfig())
+            ]
+            .concat(this.enableGridBoardToggle ? 'rallygridboardtoggleable' : [])
+            .concat(this.getActionsMenuConfig());
+        },
+
+        getGridConfig: function (options) {
+            return {
+                xtype: 'rallytreegrid',
+                alwaysShowDefaultColumns: false,
+                columnCfgs: this.getColumnCfgs(),
+                enableBulkEdit: false,
+                enableRanking: Rally.data.ModelTypes.areArtifacts(this.modelNames),
+                expandAllInColumnHeaderEnabled: true,
+                plugins: this.getGridPlugins(),
+                stateId: this.getScopedStateId('grid'),
+                stateful: true,
+                store: options && options.gridStore,
+                storeConfig: {
+                    filters: this.getPermanentFilters()
+                },
+                summaryColumns: [],
+                listeners: {
+                    afterrender: this.publishComponentReady,
+                    storeload: {
+                        fn: function () {
+                            this.fireEvent('contentupdated', this);
+                        },
+                        single: true
+                    },
+                    scope: this
+                }
+            };
         }
     });
