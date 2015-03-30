@@ -1,59 +1,84 @@
-Ext.define("TestFolderNavigator", {
-    extend: 'Rally.app.App',
-    componentCls: 'app',
-    logger: new Rally.technicalservices.Logger(),
-    defaults: { margin: 10 },
-    items: [
-        {xtype:'container',itemId:'message_box',tpl:'Hello, <tpl>{_refObjectName}</tpl>'},
-        {xtype:'container',itemId:'display_box'},
-        {xtype:'tsinfolink'}
-    ],
-    launch: function() {
-        var me = this;
-        this.setLoading("Loading stuff...");
+Ext.define('TestFolderNavigator', {
+        extend: 'Rally.app.GridBoardApp',
+        requires: [
+            'Rally.ui.DateField'
+        ],
+        cls: 'testfolder-app',
+        modelNames: ['TestFolder','TestCase'],
+        statePrefix: 'ts-testfolder',
 
-        this.down('#message_box').update(this.getContext().getUser());
+        logger: Ext.create('Rally.technicalservices.Logger'),
         
-        var model_name = 'Defect',
-            field_names = ['Name','State'];
+        getPermanentFilters: function () {
+            return [
+                Rally.data.wsapi.Filter.or([
+                    { property: 'Parent', operator: '=', value: "" }
+                ])
+            ];
+        },
+
+        getFieldPickerConfig: function () {
+            var config = this.callParent(arguments);
+            config.gridFieldBlackList = _.union(config.gridFieldBlackList, [
+                'VersionId'
+            ]);
+            return _.merge(config, {
+                gridAlwaysSelectedValues: ['FormattedID','Name']
+            });
+        },
         
-        this._loadAStoreWithAPromise(model_name, field_names).then({
-            scope: this,
-            success: function(store) {
-                this._displayGrid(store,field_names);
-            },
-            failure: function(error_message){
-                alert(error_message);
-            }
-        }).always(function() {
-            me.setLoading(false);
-        });
-    },
-    _loadAStoreWithAPromise: function(model_name, model_fields){
-        var deferred = Ext.create('Deft.Deferred');
-        var me = this;
-        this.logger.log("Starting load:",model_name,model_fields);
-          
-        Ext.create('Rally.data.wsapi.Store', {
-            model: model_name,
-            fetch: model_fields
-        }).load({
-            callback : function(records, operation, successful) {
-                if (successful){
-                    deferred.resolve(this);
-                } else {
-                    me.logger.log("Failed: ", operation);
-                    deferred.reject('Problem loading: ' + operation.error.errors.join('. '));
+        getGridStores: function () {
+            return this._getTreeGridStore();
+        },
+
+        _getTreeGridStore: function () {
+            return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(_.merge({
+                autoLoad: false,
+                sorters: [{ property: 'ObjectID', direction: 'ASC'}],
+                childPageSizeEnabled: true,
+                mapper: Ext.create('Rally.technicalservices.TFParentChildMapper'),
+                enableHierarchy: true,
+                fetch: _.union(['Workspace'], this.columnNames),
+                models: _.clone(this.models),
+                pageSize: 25,
+                remoteSort: true,
+                root: {expanded: true},
+//                storeType: 'Rally.technicalservices.data.wsapi.testfolder.Store',
+                getParentFieldNamesByChildType: this._getParentFieldNamesByChildType,
+                childLevelSorters: [{ property: 'FormattedID',direction: 'ASC'}]
+
+            }, this.getGridStoreConfig())).then({
+                success: function (treeGridStore) {
+                    this.logger.log(treeGridStore);
+                    treeGridStore.enableHierarchy = true;
+                    //treeGridStore.on('load', this.publishComponentReady, this, { single: true });
+                    return { gridStore: treeGridStore };
+                },
+                scope: this
+            });
+        },
+
+        _getParentFieldNamesByChildType: function(childType, parentType) {
+            var model = this.model.getArtifactComponentModel(childType);
+            return(['Parent']);
+            return _.transform(this.mapper.getParentFields(childType, parentType), function(acc, field) {
+                var typePath = field.typePath,
+                    fieldName = field.fieldName,
+                    hasFieldModel = this.model.getArtifactComponentModel(typePath) || model.hasField(fieldName);
+
+                if (hasFieldModel) {
+                    acc.push(fieldName.replace(/\s+/g, ''));
                 }
-            }
-        });
-        return deferred.promise;
-    },
-    _displayGrid: function(store,field_names){
-        this.down('#display_box').add({
-            xtype: 'rallygrid',
-            store: store,
-            columnCfgs: field_names
-        });
-    }
-});
+            }, [], this);
+            
+        },
+        
+        getAddNewConfig: function () {
+            return Ext.merge(this.callParent(arguments), {
+                showRank: false,
+                showAddWithDetails: false,
+                openEditorAfterAddFailure: false,
+                minWidth: 800
+            });
+        }
+    });
