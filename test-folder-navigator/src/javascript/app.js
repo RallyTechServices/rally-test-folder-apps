@@ -4,7 +4,7 @@ Ext.define('TestFolderNavigator', {
             'Rally.ui.DateField'
         ],
         cls: 'testfolder-app',
-        modelNames: ['TestFolder','TestCase'],
+        modelNames: ['TestFolder'],
         statePrefix: 'ts-testfolder',
 
         logger: Ext.create('Rally.technicalservices.Logger'),

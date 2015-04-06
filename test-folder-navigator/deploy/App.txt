@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Navigator</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sun Mar 29 2015 21:41:05 GMT-0700 (PDT) -->
+    <!--  Build Date: Sun Apr 05 2015 20:11:52 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Mar 29 2015 21:41:05 GMT-0700 (PDT)";
-        var CHECKSUM = 21763418391;
+        var APP_BUILD_DATE = "Sun Apr 05 2015 20:11:52 GMT-0700 (PDT)";
+        var CHECKSUM = 21743566368;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -815,7 +815,7 @@ Ext.define('TestFolderNavigator', {
             'Rally.ui.DateField'
         ],
         cls: 'testfolder-app',
-        modelNames: ['TestFolder','TestCase'],
+        modelNames: ['TestFolder'],
         statePrefix: 'ts-testfolder',
 
         logger: Ext.create('Rally.technicalservices.Logger'),
