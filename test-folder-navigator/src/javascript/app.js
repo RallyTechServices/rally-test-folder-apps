@@ -32,9 +32,32 @@ Ext.define('TestFolderNavigator', {
             var config = this.callParent(arguments);
             config.gridFieldBlackList = _.union(config.gridFieldBlackList, [
                 'VersionId',
-                'Parent'
+                'Parent',
+                'TestCases',
+                'Recycled',
+                'TestFolder',
+                'Steps',
+                'Objective',
+                'PostConditions',
+                'PreConditions',
+                'Results',
+                'TestSets',
+                'ValidationExpectedResult',
+                'ValidationInput'
             ]);
             return _.merge(config, {
+               _getModels: function() {
+                    console.log('models for picker', this.cmp.getModels());
+                    
+                    return _.reduce(this.cmp.getModels(), function(accum, model) {
+                        if (model.typePath === 'artifact') {
+                            accum = accum.concat(model.getArtifactComponentModels());
+                        } else {
+                            accum.push(model);
+                        }
+                        return accum;
+                    }, []);
+                },
                 gridAlwaysSelectedValues: ['FormattedID','Name']
             });
         },

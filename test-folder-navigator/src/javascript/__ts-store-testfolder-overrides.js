@@ -378,3 +378,12 @@ Ext.override(Rally.data.wsapi.ModelBuilder,{
             });
     }
 });
+
+// override treegrid so that all the models can be given to the picker
+Ext.override(Rally.ui.grid.TreeGrid, {
+    getModels: function() {
+        console.log('store:',this.store);
+        
+        return this.store.models || [this.store.model];
+    }
+});
