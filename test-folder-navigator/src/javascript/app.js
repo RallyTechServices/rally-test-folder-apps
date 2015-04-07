@@ -140,8 +140,8 @@ Ext.define('TestFolderNavigator', {
                     headerPosition: 'left'
                 }, this.getFieldPickerConfig())
             ]
-            .concat(this.enableGridBoardToggle ? 'rallygridboardtoggleable' : [])
-            .concat(this.getActionsMenuConfig());
+            .concat(this.enableGridBoardToggle ? 'rallygridboardtoggleable' : [])/*
+            .concat(this.getActionsMenuConfig())*/;
         },
 
         getGridConfig: function (options) {

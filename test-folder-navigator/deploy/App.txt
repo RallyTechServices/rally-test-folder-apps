@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Navigator</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Apr 06 2015 20:27:03 GMT-0700 (PDT) -->
+    <!--  Build Date: Tue Apr 07 2015 10:20:06 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Apr 06 2015 20:27:03 GMT-0700 (PDT)";
-        var CHECKSUM = 31938424270;
+        var APP_BUILD_DATE = "Tue Apr 07 2015 10:20:06 GMT-0700 (PDT)";
+        var CHECKSUM = 31943174891;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -1173,8 +1173,8 @@ Ext.define('TestFolderNavigator', {
                     headerPosition: 'left'
                 }, this.getFieldPickerConfig())
             ]
-            .concat(this.enableGridBoardToggle ? 'rallygridboardtoggleable' : [])
-            .concat(this.getActionsMenuConfig());
+            .concat(this.enableGridBoardToggle ? 'rallygridboardtoggleable' : [])/*
+            .concat(this.getActionsMenuConfig())*/;
         },
 
         getGridConfig: function (options) {
