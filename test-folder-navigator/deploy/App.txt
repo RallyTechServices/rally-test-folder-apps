@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Navigator</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sun Apr 05 2015 20:50:39 GMT-0700 (PDT) -->
+    <!--  Build Date: Mon Apr 06 2015 20:27:03 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Apr 05 2015 20:50:39 GMT-0700 (PDT)";
-        var CHECKSUM = 22995196879;
+        var APP_BUILD_DATE = "Mon Apr 06 2015 20:27:03 GMT-0700 (PDT)";
+        var CHECKSUM = 31938424270;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -15,6 +15,160 @@
     <script type="text/javascript">
         Rally.onReady(function() {
              
+Ext.define('Rally.ui.menu.bulk.TestSet', {
+    alias: 'widget.rallyrecordmenubulktestset',
+    extend:  Rally.ui.menu.bulk.MenuItem ,
+
+
+    config: {
+        text: 'Add to TestSet...',
+        handler: function() {
+            this._onMenuItemChosen();
+        },
+        
+        predicate: function(records) {
+            return records;
+        },
+
+        prepareRecords: function(records, args) {
+            return records;
+        }      
+    },     
+
+    _onMenuItemChosen: function() {
+        Ext.create('Rally.technicalservices.dialog.BulkAddToTestSetDialog', {
+            listeners: {
+                artifactchosen: this._testsetchosen,
+                scope: this
+            }
+        });
+        
+        console.log('created dialog');
+    },     
+
+    _testsetchosen: function(dialog, testset) {
+        console.log('Chose test set:',testset);
+        var me = this;
+        
+        if (this.onBeforeAction(this.records) === false) {
+            return;
+        }
+        var records = this.records;
+        
+        var promises = [];
+        Ext.Array.each( records, function(record){
+            promises.push( function(){
+                return me._addToTestSet(record,testset);
+            });
+        },this);
+        
+        Deft.Chain.sequence(promises).then({
+            scope: this,
+            success: function(results) {
+                console.log('done', results);
+                this.onSuccess (Ext.Array.flatten(results), []);
+            },
+            failure: function(message) {
+                Ext.Msg.alert('Problem saving to test set: ', message);
+            }
+        });
+    },     
+   
+    // add one record at a time to the testset
+    _addToTestSet: function(record, testset) {
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+        
+        console.log('Adding ', record.get('_type'), record.get('FormattedID'), testset.get('FormattedID'), testset.get('_ref'));
+        if ( record.get('_type') == "testfolder" ) {
+            // go get the testcases
+            Deft.Chain.parallel([ 
+                function() { return me._getTestFoldersInFolder(record) },
+                function() { return me._getTestCasesInFolder(record) }
+            ]).then({
+                scope: me,
+                success: function(folders_and_cases) {
+                    var promises = [];
+                    Ext.Array.each( Ext.Array.flatten(folders_and_cases), function(item){
+                        promises.push( function(){
+                            return me._addToTestSet(item,testset);
+                        });
+                    },this);
+                    
+                    Deft.Chain.sequence(promises).then({
+                        scope: this,
+                        success: function(results) {
+                            deferred.resolve(results);
+                        },
+                        failure: function(message) {
+                            deferred.reject(message);
+                        }
+                    });
+                },
+                failure: function(message) {
+                    deferred.reject(message);
+                }
+            });
+            
+        } else {
+            // add the testcase
+            var store = testset.getCollection('TestCases');
+            store.load({
+                callback: function() {
+                    console.log('adding ', record.get('_ref'), ' to ', store);
+                    store.add([{ "_ref": record.get('_ref') }]);
+                    store.sync({
+                        callback: function() {
+                            deferred.resolve(record);
+                        }
+                    });
+                }
+            });
+        }
+        return deferred.promise;
+    },
+    _getTestCasesInFolder: function(record) {
+        var deferred = Ext.create('Deft.Deferred');
+        Ext.create('Rally.data.wsapi.Store',{
+            model: 'TestCase',
+            autoLoad: true,
+            filters: [{property:'TestFolder.ObjectID',value:record.get('ObjectID')}],
+            limit: 'Infinity',
+            listeners: {
+                load: function(store,records,success){
+                    deferred.resolve(records);
+                }
+            }
+        });
+        
+        return deferred.promise;
+    },
+    _getTestFoldersInFolder: function(record) {
+        var deferred = Ext.create('Deft.Deferred');
+        Ext.create('Rally.data.wsapi.Store',{
+            model: 'TestFolder',
+            autoLoad: true,
+            filters: [{property:'Parent.ObjectID',value:record.get('ObjectID')}],
+            limit: 'Infinity',
+            listeners: {
+                load: function(store,records,success){
+                    deferred.resolve(records);
+                }
+            }
+        });
+        
+        return deferred.promise;
+    },
+    /**    
+     * @override
+     * @inheritdoc
+     */     
+    onSuccess: function (successfulRecords, unsuccessfulRecords, args, errorMessage) {
+        var changes = {};
+        Ext.callback(this.onActionComplete, null, [successfulRecords, unsuccessfulRecords, changes]);
+    }
+});
+
 Ext.define('Rally.technicalservices.ui.menu.item.CascadeDeleteMenuItem', {
     extend:  Rally.ui.menu.item.RecordMenuItem ,
     alias: 'widget.tsrecordmenuitemcascadedelete',
@@ -210,6 +364,42 @@ Ext.define('Rally.technicalservices.ui.menu.item.CascadeDeleteMenuItem', {
             message: "Are you sure? <br/>This will delete this folder's descendant folders and test cases.  THERE IS NO UNDO.",
             confirmLabel: 'OK'
         });
+    }
+});
+Ext.override(Rally.ui.grid.CheckboxModel,{
+
+    _recordIsSelectable: function(record) {
+        return true;
+    }
+            
+});
+
+Ext.override(Rally.ui.menu.bulk.RecordMenu,{
+
+    _getMenuItems: function () {
+        var records = this.getRecords();
+        var items = [
+            {
+                text: 'Bulk Actions (' + records.length + ' items)',
+                canActivate: false,
+                cls: 'menu-item-read-only'
+            }
+        ].concat(this.items);
+
+        items.push({xtype: 'rallyrecordmenubulktestset'});
+  
+
+        _.each(items, function (item) {
+            Ext.apply(item, {
+                records: records,
+                store: this.store,
+                onBeforeAction: this.onBeforeAction,
+                onActionComplete: this.onActionComplete,
+                context: this.getContext()
+            });
+        }, this);
+
+        return items;
     }
 });
 /**
@@ -772,6 +962,29 @@ Ext.override(Rally.ui.grid.TreeGrid, {
         return this.store.models || [this.store.model];
     }
 });
+Ext.define('Rally.technicalservices.dialog.BulkAddToTestSetDialog',{
+    extend: 'Rally.ui.dialog.ArtifactChooserDialog',
+    alias: 'widget.tsaddtotestsetdialog',
+    
+    config: {
+        autoShow: true,
+        title: 'Choose a TestSet',
+        artifactTypes: 'TestSet',
+        multiple: false,
+        
+        columns: [
+            {
+                text: 'ID',
+                dataIndex: 'FormattedID',
+                renderer: _.identity
+            },
+            'Name',
+            'Iteration',
+            'Project'
+        ]
+    }
+    
+});
 Ext.define('Rally.technicalservices.TFParentChildMapper',{
     extend: 'Rally.data.wsapi.ParentChildMapper',
     constructor: function() {
@@ -837,8 +1050,6 @@ Ext.define('TestFolderNavigator', {
                 storeConfig: {filters: this._getConfiguredFilters(filterObj.filters || [], filterObj.types || [])}
             });
         },
-        
-       
         
         getPermanentFilters: function () {
             return [
@@ -971,7 +1182,7 @@ Ext.define('TestFolderNavigator', {
                 xtype: 'rallytreegrid',
                 alwaysShowDefaultColumns: false,
                 columnCfgs: this.getColumnCfgs(),
-                enableBulkEdit: false,
+                enableBulkEdit: true,
                 enableRanking: Rally.data.ModelTypes.areArtifacts(this.modelNames),
                 expandAllInColumnHeaderEnabled: true,
                 plugins: this.getGridPlugins(),

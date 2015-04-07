@@ -18,8 +18,6 @@ Ext.define('TestFolderNavigator', {
             });
         },
         
-       
-        
         getPermanentFilters: function () {
             return [
                 Rally.data.wsapi.Filter.or([
@@ -151,7 +149,7 @@ Ext.define('TestFolderNavigator', {
                 xtype: 'rallytreegrid',
                 alwaysShowDefaultColumns: false,
                 columnCfgs: this.getColumnCfgs(),
-                enableBulkEdit: false,
+                enableBulkEdit: true,
                 enableRanking: Rally.data.ModelTypes.areArtifacts(this.modelNames),
                 expandAllInColumnHeaderEnabled: true,
                 plugins: this.getGridPlugins(),
