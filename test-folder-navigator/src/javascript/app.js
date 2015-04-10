@@ -9,15 +9,6 @@ Ext.define('TestFolderNavigator', {
 
         logger: Ext.create('Rally.technicalservices.Logger'),
         
-        _applyBoardFilters: function(board, filterObj) {
-            console.log('filters',filterObj);
-            
-            board.refresh({
-                types: filterObj.types,
-                storeConfig: {filters: this._getConfiguredFilters(filterObj.filters || [], filterObj.types || [])}
-            });
-        },
-        
         getPermanentFilters: function () {
             return [
                 Rally.data.wsapi.Filter.or([
@@ -63,7 +54,7 @@ Ext.define('TestFolderNavigator', {
         getGridStores: function () {
             return this._getTreeGridStore();
         },
-
+        
         _getTreeGridStore: function () {
             return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(_.merge({
                 autoLoad: false,

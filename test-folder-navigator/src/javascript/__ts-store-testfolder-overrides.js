@@ -190,7 +190,7 @@ Ext.override(Rally.data.wsapi.TreeStore,{
     
     _resolveLoadingRecords: function(deferred, records, options, operation, success) {
         delete options.callback; // Don't call me again, Susan.
-        console.log('records',records, options.id);
+
         if ( ! this.temp_records || this.temp_records == null) { 
             this.temp_records = records; 
         } else {

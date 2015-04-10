@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Navigator</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Apr 07 2015 10:20:06 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Apr 09 2015 17:26:18 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Apr 07 2015 10:20:06 GMT-0700 (PDT)";
-        var CHECKSUM = 31943174891;
+        var APP_BUILD_DATE = "Thu Apr 09 2015 17:26:18 GMT-0700 (PDT)";
+        var CHECKSUM = 33860919856;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -361,7 +361,7 @@ Ext.define('Rally.technicalservices.ui.menu.item.CascadeDeleteMenuItem', {
     _launchConfirmDialog: function() {
         return Ext.create('Rally.ui.dialog.ConfirmDialog', {
             title: 'Cascade Delete',
-            message: "Are you sure? <br/>This will delete this folder's descendant folders and test cases.  THERE IS NO UNDO.",
+            message: "Are you sure? <br/><br/>This will delete <em>all of</em> this folder's descendant folders and test cases, regardless of your filter setting.<br/><br/>  THERE IS NO UNDO.",
             confirmLabel: 'OK'
         });
     }
@@ -401,6 +401,42 @@ Ext.override(Rally.ui.menu.bulk.RecordMenu,{
 
         return items;
     }
+});
+
+Ext.override(Rally.ui.gridboard.GridBoard,{
+        
+    _applyGridFilters: function(grid, filterObj) {
+        if (!_.isEmpty(filterObj.types)) {
+            grid.store.parentTypes = filterObj.types;
+        }
+        console.log("FILTER: ", filterObj);
+        console.log("FILTER +:", this._getConfiguredFilters(filterObj.filters || [], filterObj.types || []));
+        grid.store.clearFilter(true);
+        grid.store.filter(this._getConfiguredFilters(filterObj.filters || [], filterObj.types || []));
+    },
+    
+    _getConfiguredFilters: function(extraFilters, types) {
+        var isBoard = this.getToggleState() === 'board';
+        
+        
+        // want to see if we can decide to only apply the permanent filter if extra is empty
+        console.log("EXTRA filters:", extraFilters);
+        
+        var filters =  _.compact(Ext.Array.merge(
+                    this.storeConfig && this.storeConfig.filters,
+                    isBoard && this.cardBoardConfig.storeConfig && this.cardBoardConfig.storeConfig.filters,
+                    !isBoard && this.gridConfig.storeConfig && this.gridConfig.storeConfig.filters,
+                    extraFilters));
+                    
+        if ( extraFilters.length != 0 ) {
+            filters = extraFilters;
+        }
+
+        console.log("FILTERS:", filters);
+        
+        return filters;
+    }
+        
 });
 /**
  * A link that pops up a version dialog box
@@ -765,7 +801,7 @@ Ext.override(Rally.data.wsapi.TreeStore,{
     
     _resolveLoadingRecords: function(deferred, records, options, operation, success) {
         delete options.callback; // Don't call me again, Susan.
-        console.log('records',records, options.id);
+
         if ( ! this.temp_records || this.temp_records == null) { 
             this.temp_records = records; 
         } else {
@@ -1042,15 +1078,6 @@ Ext.define('TestFolderNavigator', {
 
         logger: Ext.create('Rally.technicalservices.Logger'),
         
-        _applyBoardFilters: function(board, filterObj) {
-            console.log('filters',filterObj);
-            
-            board.refresh({
-                types: filterObj.types,
-                storeConfig: {filters: this._getConfiguredFilters(filterObj.filters || [], filterObj.types || [])}
-            });
-        },
-        
         getPermanentFilters: function () {
             return [
                 Rally.data.wsapi.Filter.or([
@@ -1096,7 +1123,7 @@ Ext.define('TestFolderNavigator', {
         getGridStores: function () {
             return this._getTreeGridStore();
         },
-
+        
         _getTreeGridStore: function () {
             return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(_.merge({
                 autoLoad: false,
