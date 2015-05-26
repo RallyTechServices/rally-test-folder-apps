@@ -1,12 +1,13 @@
+
 Ext.define('TestFolderNavigator', {
         extend: 'Rally.app.GridBoardApp',
-        requires: [
-            'Rally.ui.DateField'
-        ],
         cls: 'testfolder-app',
         modelNames: ['TestFolder'],
         statePrefix: 'ts-testfolder',
 
+        enableXmlExport: false,
+
+                
         logger: Ext.create('Rally.technicalservices.Logger'),
         
         getPermanentFilters: function () {
@@ -113,18 +114,8 @@ Ext.define('TestFolderNavigator', {
 //                    context: this.getContext()
 //                },
                 {
-                    ptype: 'rallygridboardcustomfiltercontrol',
-                    filterChildren: false,
-                    filterControlConfig: _.merge({
-                        modelNames: this.modelNames,
-                        stateful: true,
-                        stateId: this.getScopedStateId('custom-filter-button')
-                    }, this.getFilterControlConfig()),
-                    showOwnerFilter: false,
-                    ownerFilterControlConfig: {
-                        stateful: true,
-                        stateId: this.getScopedStateId('owner-filter')
-                    }
+                    ptype: 'tsgridboardsearchcontrol',
+                    searchControlConfig: Ext.Object.merge({},this.getSearchControlConfig())
                 },
                 _.merge({
                     ptype: 'rallygridboardfieldpicker',
@@ -135,6 +126,10 @@ Ext.define('TestFolderNavigator', {
             .concat(this.getActionsMenuConfig())*/;
         },
 
+        getSearchControlConfig: function() {
+            return {};
+        },
+        
         getGridConfig: function (options) {
             return {
                 xtype: 'rallytreegrid',
@@ -148,8 +143,10 @@ Ext.define('TestFolderNavigator', {
                 stateful: true,
                 store: options && options.gridStore,
                 storeConfig: {
+                    autoLoad: true,
                     filters: this.getPermanentFilters()
                 },
+                useFilterCollection: false,
                 summaryColumns: [],
                 listeners: {
                     afterrender: this.publishComponentReady,
