@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Navigator</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Jun 09 2015 09:41:54 GMT-0700 (PDT) -->
+    <!--  Build Date: Tue Jun 09 2015 14:37:41 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Jun 09 2015 09:41:54 GMT-0700 (PDT)";
-        var CHECKSUM = 72063795886;
+        var APP_BUILD_DATE = "Tue Jun 09 2015 14:37:41 GMT-0700 (PDT)";
+        var CHECKSUM = 73822933919;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -133,9 +133,12 @@ Ext.define('Rally.ui.menu.bulk.TestSet', {
             model: 'TestCase',
             autoLoad: true,
             filters: [{property:'TestFolder.ObjectID',value:record.get('ObjectID')}],
+            sorters: [{property:'DragAndDropRank',direction:'ASC'}],
             limit: 'Infinity',
             listeners: {
                 load: function(store,records,success){
+                    Ext.Array.each(records,function(record){ console.log(record.get('FormattedID')); });
+                    
                     deferred.resolve(records);
                 }
             }
@@ -468,15 +471,12 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
             var top_record = ancestor_array[ancestor_array.length - 1];
             var node = this.grid.getStore().findExactRecord(top_record);
 
-            console.log("expand ", top_record.get('Name'));
-            console.log('node:',node);
             if ( !node ) {
                 this.setLoading(false);
                 return;
             }
             
             if ( node && ancestor_array.length > 1) {
-                console.log("Expanded:", node.isExpanded());
                 ancestor_array.pop();
                 
                 if ( !node.isExpanded() ) {
@@ -485,7 +485,6 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
                     }, this, {single: true});
                     node.expand(false);
                 } else {
-                    console.log("already expanded");
                     this._expandNode(ancestor_array);
                 }
             } else {
@@ -493,10 +492,6 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
                 
                 this.grid.getView().focusNode(node);
 
-//                this.grid.getView().focusRow(
-//                    this.grid.getStore().indexOf(node)
-//                );
-//                
                 this.setLoading(false);
             }
         }
@@ -792,6 +787,8 @@ Ext.override(Ext.data.TreeStore,{
             node: options.node || node
         }, options);
 
+        console.log('sorters:', me.getSorters());
+        
         me.lastOptions = options;
 
         operation = new Ext.data.Operation(options);
@@ -833,6 +830,10 @@ Ext.override(Ext.data.TreeStore,{
                         var model = me.models[1];
                         
                         o1.filters = me.filter_by_model[model.typePath];
+                        o1.sorters = me.sorters_by_model[model.typePath];
+                        
+                        console.log('o1',model.typePath, o1);
+                        
                         model.getProxy().read(o1,function(op){
                             deferred.resolve(op);
                         },me);
@@ -844,6 +845,10 @@ Ext.override(Ext.data.TreeStore,{
                         var model = me.models[0];
                         
                         o2.filters = me.filter_by_model[model.typePath];
+                        o2.sorters = me.sorters_by_model[model.typePath];
+                    
+                        console.log('o2:',model.typePath, o2);
+                        
                         model.getProxy().read(o2,function(op){
                             deferred.resolve(op);
                         },me);
@@ -948,6 +953,12 @@ Ext.override(Rally.data.wsapi.TreeStore,{
     
     filter_by_model: {},
     
+    sorters_by_model: {
+        'testfolder': [{property:'ObjectID'}],
+        'testcase': [{property:'DragAndDropRank'}]
+    
+    },
+    
     _getChildNodeFilters: function(node) {
         
         var parentType = node.self.typePath,
@@ -979,7 +990,25 @@ Ext.override(Rally.data.wsapi.TreeStore,{
         }
         
         return [];
-    }
+    },
+    
+    _getRankField: function(model) {
+        console.log("Model:",model);
+        return Rally.data.Ranker.getRankField(model);
+    },
+    
+    _getDefaultChildSorters: function() {
+            return [
+                {
+                    property: 'TaskIndex',
+                    direction: 'ASC'
+                },
+                {
+                    property: this._getRankField(this.model),
+                    direction: 'ASC'
+                }];
+        }
+        
 });
 
 // test folders aren't artifacts

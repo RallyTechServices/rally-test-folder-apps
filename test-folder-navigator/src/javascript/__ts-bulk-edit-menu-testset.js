@@ -116,9 +116,12 @@ Ext.define('Rally.ui.menu.bulk.TestSet', {
             model: 'TestCase',
             autoLoad: true,
             filters: [{property:'TestFolder.ObjectID',value:record.get('ObjectID')}],
+            sorters: [{property:'DragAndDropRank',direction:'ASC'}],
             limit: 'Infinity',
             listeners: {
                 load: function(store,records,success){
+                    Ext.Array.each(records,function(record){ console.log(record.get('FormattedID')); });
+                    
                     deferred.resolve(records);
                 }
             }
