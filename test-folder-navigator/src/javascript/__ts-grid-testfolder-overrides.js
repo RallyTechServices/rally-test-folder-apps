@@ -100,15 +100,12 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
             var top_record = ancestor_array[ancestor_array.length - 1];
             var node = this.grid.getStore().findExactRecord(top_record);
 
-            console.log("expand ", top_record.get('Name'));
-            console.log('node:',node);
             if ( !node ) {
                 this.setLoading(false);
                 return;
             }
             
             if ( node && ancestor_array.length > 1) {
-                console.log("Expanded:", node.isExpanded());
                 ancestor_array.pop();
                 
                 if ( !node.isExpanded() ) {
@@ -117,7 +114,6 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
                     }, this, {single: true});
                     node.expand(false);
                 } else {
-                    console.log("already expanded");
                     this._expandNode(ancestor_array);
                 }
             } else {
@@ -125,10 +121,6 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
                 
                 this.grid.getView().focusNode(node);
 
-//                this.grid.getView().focusRow(
-//                    this.grid.getStore().indexOf(node)
-//                );
-//                
                 this.setLoading(false);
             }
         }

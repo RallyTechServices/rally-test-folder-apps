@@ -52,6 +52,8 @@ Ext.override(Ext.data.TreeStore,{
             node: options.node || node
         }, options);
 
+        console.log('sorters:', me.getSorters());
+        
         me.lastOptions = options;
 
         operation = new Ext.data.Operation(options);
@@ -93,6 +95,10 @@ Ext.override(Ext.data.TreeStore,{
                         var model = me.models[1];
                         
                         o1.filters = me.filter_by_model[model.typePath];
+                        o1.sorters = me.sorters_by_model[model.typePath];
+                        
+                        console.log('o1',model.typePath, o1);
+                        
                         model.getProxy().read(o1,function(op){
                             deferred.resolve(op);
                         },me);
@@ -104,6 +110,10 @@ Ext.override(Ext.data.TreeStore,{
                         var model = me.models[0];
                         
                         o2.filters = me.filter_by_model[model.typePath];
+                        o2.sorters = me.sorters_by_model[model.typePath];
+                    
+                        console.log('o2:',model.typePath, o2);
+                        
                         model.getProxy().read(o2,function(op){
                             deferred.resolve(op);
                         },me);
@@ -208,6 +218,12 @@ Ext.override(Rally.data.wsapi.TreeStore,{
     
     filter_by_model: {},
     
+    sorters_by_model: {
+        'testfolder': [{property:'ObjectID'}],
+        'testcase': [{property:'DragAndDropRank'}]
+    
+    },
+    
     _getChildNodeFilters: function(node) {
         
         var parentType = node.self.typePath,
@@ -239,7 +255,25 @@ Ext.override(Rally.data.wsapi.TreeStore,{
         }
         
         return [];
-    }
+    },
+    
+    _getRankField: function(model) {
+        console.log("Model:",model);
+        return Rally.data.Ranker.getRankField(model);
+    },
+    
+    _getDefaultChildSorters: function() {
+            return [
+                {
+                    property: 'TaskIndex',
+                    direction: 'ASC'
+                },
+                {
+                    property: this._getRankField(this.model),
+                    direction: 'ASC'
+                }];
+        }
+        
 });
 
 // test folders aren't artifacts
