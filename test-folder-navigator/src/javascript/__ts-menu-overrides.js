@@ -3,11 +3,17 @@ Ext.override(Rally.ui.menu.DefaultRecordMenu, {
         var record = this.getRecord();
         var items = [];
         
-        items.push({
-            xtype: 'tsrecordmenuitemcascadedelete',
-            view: this.view,
-            record: record
-        });
+        items.push(
+        {
+                xtype: 'tsrecordmenuitemcascadedelete',
+                view: this.view,
+                record: record
+            }
+//            ,
+//            {
+//               // xtype:'rallyrecordmenuitemaddexistingtestcases'
+//            }
+        );
         
         return items;
     }
@@ -27,3 +33,4 @@ Ext.override(Rally.ui.menu.TestCaseRecordMenu, {
         return items;
     }
 });
+

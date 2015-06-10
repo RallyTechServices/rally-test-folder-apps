@@ -38,12 +38,25 @@ Ext.override(Rally.ui.menu.bulk.RecordMenu,{
 Ext.override(Rally.ui.gridboard.GridBoard,{
     
     _applyGridFilters: function(grid, filterObj) {
+        var me = this;
+        
+        console.log('_applyGridFilters', filterObj);
+        
         if (!_.isEmpty(filterObj.types)) {
             grid.store.parentTypes = filterObj.types;
         }
 
         grid.store.clearFilter(true);
+        if ( this.expandTo ) {
+            grid.store.on('load', function() { 
+                me._showRecord(me.expandTo);
+                me.expandTo = null;
+                
+                console.log('here'); 
+            });
+        }
         grid.store.filter(this._getConfiguredFilters(filterObj.filters || [], filterObj.types || []));
+        
     },
     
     _getConfiguredFilters: function(extraFilters, types) {
@@ -51,6 +64,9 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
         
         // want to see if we can decide to only apply the permanent filter if extra is empty
         if ( !extraFilters ) { extraFilters = []; }
+        
+        console.log('extraFilters', extraFilters);
+        
         var filters =  _.compact(Ext.Array.merge(
                     this.storeConfig && this.storeConfig.filters,
                     isBoard && this.cardBoardConfig.storeConfig && this.cardBoardConfig.storeConfig.filters,
@@ -65,6 +81,7 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
     },
 
     _showRecord: function(item) {
+        if ( !item ) { return; }
         this.setLoading("Finding " + item.get("FormattedID") + "...");
         console.log("show", item);
         var me = this;
@@ -94,13 +111,47 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
         
     },
     
-    _expandNode: function(ancestor_array) {
-        this.setLoading("Expanding...");
+   applyCustomFilter: function(filterObj) {
+        console.log('applyCustomFilter',filterObj);
+        
+        var gridOrBoard = this.getGridOrBoard();
+
+        this.currentCustomFilter = filterObj;
+
+        if (gridOrBoard) {
+            if (this.getToggleState() === 'board') {
+                this._applyBoardFilters(gridOrBoard, filterObj);
+            } else {
+                this._applyGridFilters(gridOrBoard, filterObj);
+            }
+        }
+    },
+        
+    _expandNode: function(ancestor_array, page) {
+        this.setLoading("Expanding...", page);
         if ( ancestor_array.length > 0 ) {
             var top_record = ancestor_array[ancestor_array.length - 1];
             var node = this.grid.getStore().findExactRecord(top_record);
 
             if ( !node ) {
+                console.log("Top Record not in current page:", top_record);
+                //
+                console.log(this.grid.getStore());
+                
+                var store = this.grid.getStore();
+                var old_filters = store.filters;
+                
+                var record_id = top_record.get('ObjectID');
+                
+                console.log("ID:", record_id);
+                var filter = Ext.create('Rally.data.wsapi.Filter',{
+                    property: 'ObjectID', 
+                    value: record_id
+                });
+                
+                this.expandTo = ancestor_array[0];
+                
+                this.applyCustomFilter({ filters: filter });
                 this.setLoading(false);
                 return;
             }
@@ -178,6 +229,8 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
     _addGrid: function() {
         var grid = this.add(this._getGridConfig());
 
+        console.log(grid);
+        
         this.mon(grid, 'afterproxyload', this._onGridOrBoardLoad, this);
 
         if (!this.useFilterCollection && this.currentCustomFilter) {

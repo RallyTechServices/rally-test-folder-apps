@@ -112,6 +112,7 @@ Ext.define('TestFolderNavigator', {
 //                {
 //                    ptype: 'rallygridboardaddnew',
 //                    context: this.getContext()
+//                    
 //                },
                 {
                     ptype: 'tsgridboardsearchcontrol',
@@ -133,7 +134,7 @@ Ext.define('TestFolderNavigator', {
         getGridConfig: function (options) {
             return {
                 xtype: 'rallytreegrid',
-                alwaysShowDefaultColumns: false,
+                alwaysShowDefaultColumns: true,
                 columnCfgs: this.getColumnCfgs(),
                 enableBulkEdit: true,
                 enableRanking: Rally.data.ModelTypes.areArtifacts(this.modelNames),
@@ -141,10 +142,12 @@ Ext.define('TestFolderNavigator', {
                 plugins: this.getGridPlugins(),
                 stateId: this.getScopedStateId('grid'),
                 stateful: true,
+                showPagingToolbar: false,
                 store: options && options.gridStore,
                 storeConfig: {
                     autoLoad: true,
                     filters: this.getPermanentFilters()
+
                 },
                 useFilterCollection: false,
                 summaryColumns: [],
