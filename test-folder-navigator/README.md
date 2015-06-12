@@ -1,5 +1,18 @@
 #Test Folder Navigator
 
+Buttons:
+* Blue backgrounds on the filter and search buttons indicate that they are engaged
+* Filter (left): For folders that are showing, display only test cases that match the filter.  When the filter is engaged, selecting a folder for adding to test set will only add test cases that match the filter.
+* Search (right): Display selected folder in its tree.  If this and the filter are engaged, this will show the folders that belong to the same tree as the selected folder and their test cases that match the filter.
+* Add columns (three lines and a plus sign): Choose columns to display.
+
+Menu Items:
+
+* Single folder menu - Cascade delete:  Remove all the folders and test cases from this point down
+* Bulk menu - Add to test set: Add test cases in the folder and all the children folders to a test set.  If you choose a folder, all the test cases (that meet the filter) are added, whether or not you tick their tickboxes.  However, you can also tick each test case tickbox individually WITHOUT choosing the folder and they will be added.  If you choose a folder, all the test cases (that meet the filter) are added, whether or not you tick their tickboxes. 
+
+Note: Cascade delete ignores the filter setting. 
+
 ## Development Notes
 
 ### First Load
