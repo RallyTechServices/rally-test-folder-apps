@@ -81,7 +81,9 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
     },
 
     _showRecord: function(item) {
-        if ( !item ) { return; }
+        if ( !item ) {
+            return;
+        }
         this.setLoading("Finding " + item.get("FormattedID") + "...");
         console.log("show", item);
         var me = this;
@@ -143,7 +145,6 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
                 
                 var record_id = top_record.get('ObjectID');
                 
-                console.log("ID:", record_id);
                 var filter = Ext.create('Rally.data.wsapi.Filter',{
                     property: 'ObjectID', 
                     value: record_id
@@ -226,6 +227,19 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
         return deferred.promise;
     },
     
+    _clearSearch: function() {
+        var filter = Ext.create('Rally.data.wsapi.Filter',{
+            property: 'ObjectID', 
+            operator: '>',
+            value: 0
+        });
+        
+        this.expandTo = null;
+        
+        this.applyCustomFilter({ filters: filter });
+        return;
+    },
+    
     _addGrid: function() {
         var grid = this.add(this._getGridConfig());
 
@@ -238,6 +252,7 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
         }
         
         this.on('recordSelect',this._showRecord, this);
+        this.on('clearSearch', this._clearSearch, this);
         
         this.grid = grid;
         return grid;

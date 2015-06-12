@@ -134,7 +134,14 @@ Ext.define('Rally.technicalservices.TestFolderChooserDialog', {
         /**
          * @cfg showRadioButtons {Boolean}
          */
-        showRadioButtons: true
+        showRadioButtons: true,
+        /**
+         * 
+         * @cfg Boolean 
+         * Enable the Done button whether a choice is made or not so that
+         * the user can select no entry.
+         */
+        allowNoChoice: true
     },
 
     constructor: function(config) {
@@ -185,7 +192,7 @@ Ext.define('Rally.technicalservices.TestFolderChooserDialog', {
                     text: this.selectionButtonText,
                     cls: 'primary rly-small',
                     scope: this,
-                    disabled: true,
+                    disabled: ! this.allowNoChoice,
                     userAction: 'clicked done in dialog',
                     handler: function() {
                         this.fireEvent('artifactchosen', this, this.getSelectedRecords());
@@ -339,8 +346,12 @@ Ext.define('Rally.technicalservices.TestFolderChooserDialog', {
         return storeConfig;
     },
 
-    _enableDoneButton: function() {
-        this.down('#doneButton').setDisabled(this.selectionCache.length ? false : true);
+    _enableDoneButton: function() {        
+        if ( ! this.allowNoChoice ) {
+            this.down('#doneButton').setDisabled(this.selectionCache.length ? false : true);
+        } else {
+            this.down('#doneButton').setDisabled(false);
+        }
     },
 
     _findRecordInSelectionCache: function(record){

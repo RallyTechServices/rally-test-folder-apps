@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Navigator</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Jun 10 2015 15:56:41 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Jun 11 2015 17:01:59 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Jun 10 2015 15:56:41 GMT-0700 (PDT)";
-        var CHECKSUM = 77745042026;
+        var APP_BUILD_DATE = "Thu Jun 11 2015 17:01:59 GMT-0700 (PDT)";
+        var CHECKSUM = 80085194026;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -452,7 +452,9 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
     },
 
     _showRecord: function(item) {
-        if ( !item ) { return; }
+        if ( !item ) {
+            return;
+        }
         this.setLoading("Finding " + item.get("FormattedID") + "...");
         console.log("show", item);
         var me = this;
@@ -514,7 +516,6 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
                 
                 var record_id = top_record.get('ObjectID');
                 
-                console.log("ID:", record_id);
                 var filter = Ext.create('Rally.data.wsapi.Filter',{
                     property: 'ObjectID', 
                     value: record_id
@@ -597,6 +598,19 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
         return deferred.promise;
     },
     
+    _clearSearch: function() {
+        var filter = Ext.create('Rally.data.wsapi.Filter',{
+            property: 'ObjectID', 
+            operator: '>',
+            value: 0
+        });
+        
+        this.expandTo = null;
+        
+        this.applyCustomFilter({ filters: filter });
+        return;
+    },
+    
     _addGrid: function() {
         var grid = this.add(this._getGridConfig());
 
@@ -609,6 +623,7 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
         }
         
         this.on('recordSelect',this._showRecord, this);
+        this.on('clearSearch', this._clearSearch, this);
         
         this.grid = grid;
         return grid;
@@ -1420,7 +1435,14 @@ Ext.define('Rally.technicalservices.TestFolderChooserDialog', {
         /**
          * @cfg showRadioButtons {Boolean}
          */
-        showRadioButtons: true
+        showRadioButtons: true,
+        /**
+         * 
+         * @cfg Boolean 
+         * Enable the Done button whether a choice is made or not so that
+         * the user can select no entry.
+         */
+        allowNoChoice: true
     },
 
     constructor: function(config) {
@@ -1471,7 +1493,7 @@ Ext.define('Rally.technicalservices.TestFolderChooserDialog', {
                     text: this.selectionButtonText,
                     cls: 'primary rly-small',
                     scope: this,
-                    disabled: true,
+                    disabled: ! this.allowNoChoice,
                     userAction: 'clicked done in dialog',
                     handler: function() {
                         this.fireEvent('artifactchosen', this, this.getSelectedRecords());
@@ -1625,8 +1647,12 @@ Ext.define('Rally.technicalservices.TestFolderChooserDialog', {
         return storeConfig;
     },
 
-    _enableDoneButton: function() {
-        this.down('#doneButton').setDisabled(this.selectionCache.length ? false : true);
+    _enableDoneButton: function() {        
+        if ( ! this.allowNoChoice ) {
+            this.down('#doneButton').setDisabled(this.selectionCache.length ? false : true);
+        } else {
+            this.down('#doneButton').setDisabled(false);
+        }
     },
 
     _findRecordInSelectionCache: function(record){
@@ -1826,7 +1852,11 @@ Ext.define('Rally.technicalservices.GridBoardSearchControl', {
     
     _onRecordSelected: function(dialog, record) {
         console.log("found: ", record);
-        this.gridboard.fireEvent('recordSelect', record);
+        if ( record ) {
+            this.gridboard.fireEvent('recordSelect', record);
+        }else {
+            this.gridboard.fireEvent('clearSearch');
+        }
     }
 });
 
@@ -1945,6 +1975,14 @@ Ext.define('TestFolderNavigator', {
 //                    ptype: 'rallygridboardaddnew',
 //                    context: this.getContext()
 //                    
+//                },
+//                {
+//                    ptype: 'rallygridboardcustomfiltercontrol',
+//                    filterControlConfig: {
+//                        modelNames: ['TestCase'],
+//                        stateful: false
+//                    },
+//                    showOwnerFilter: true
 //                },
                 {
                     ptype: 'tsgridboardsearchcontrol',

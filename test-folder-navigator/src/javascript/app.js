@@ -114,6 +114,14 @@ Ext.define('TestFolderNavigator', {
 //                    context: this.getContext()
 //                    
 //                },
+//                {
+//                    ptype: 'rallygridboardcustomfiltercontrol',
+//                    filterControlConfig: {
+//                        modelNames: ['TestCase'],
+//                        stateful: false
+//                    },
+//                    showOwnerFilter: true
+//                },
                 {
                     ptype: 'tsgridboardsearchcontrol',
                     searchControlConfig: Ext.Object.merge({},this.getSearchControlConfig())

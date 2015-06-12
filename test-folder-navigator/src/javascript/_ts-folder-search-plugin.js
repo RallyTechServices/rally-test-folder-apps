@@ -90,6 +90,10 @@ Ext.define('Rally.technicalservices.GridBoardSearchControl', {
     
     _onRecordSelected: function(dialog, record) {
         console.log("found: ", record);
-        this.gridboard.fireEvent('recordSelect', record);
+        if ( record ) {
+            this.gridboard.fireEvent('recordSelect', record);
+        }else {
+            this.gridboard.fireEvent('clearSearch');
+        }
     }
 });
