@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Navigator</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Jun 11 2015 17:01:59 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Jun 11 2015 17:19:46 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Jun 11 2015 17:01:59 GMT-0700 (PDT)";
-        var CHECKSUM = 80085194026;
+        var APP_BUILD_DATE = "Thu Jun 11 2015 17:19:46 GMT-0700 (PDT)";
+        var CHECKSUM = 80092267871;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -418,13 +418,14 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
         }
 
         grid.store.clearFilter(true);
-        if ( this.expandTo ) {
+        if ( this.expandTo !== null ) {
+            console.log("Expand To: ", this.expandTo);
+            
             grid.store.on('load', function() { 
                 me._showRecord(me.expandTo);
                 me.expandTo = null;
                 
-                console.log('here'); 
-            });
+            }, this, { single: true });
         }
         grid.store.filter(this._getConfiguredFilters(filterObj.filters || [], filterObj.types || []));
         
@@ -599,11 +600,7 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
     },
     
     _clearSearch: function() {
-        var filter = Ext.create('Rally.data.wsapi.Filter',{
-            property: 'ObjectID', 
-            operator: '>',
-            value: 0
-        });
+        var filter = this.gridConfig.storeConfig.filters;
         
         this.expandTo = null;
         

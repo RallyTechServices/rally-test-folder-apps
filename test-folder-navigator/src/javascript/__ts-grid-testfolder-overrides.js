@@ -47,13 +47,14 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
         }
 
         grid.store.clearFilter(true);
-        if ( this.expandTo ) {
+        if ( this.expandTo !== null ) {
+            console.log("Expand To: ", this.expandTo);
+            
             grid.store.on('load', function() { 
                 me._showRecord(me.expandTo);
                 me.expandTo = null;
                 
-                console.log('here'); 
-            });
+            }, this, { single: true });
         }
         grid.store.filter(this._getConfiguredFilters(filterObj.filters || [], filterObj.types || []));
         
@@ -228,11 +229,7 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
     },
     
     _clearSearch: function() {
-        var filter = Ext.create('Rally.data.wsapi.Filter',{
-            property: 'ObjectID', 
-            operator: '>',
-            value: 0
-        });
+        var filter = this.gridConfig.storeConfig.filters;
         
         this.expandTo = null;
         
