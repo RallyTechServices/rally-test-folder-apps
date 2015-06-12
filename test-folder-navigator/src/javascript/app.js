@@ -74,7 +74,6 @@ Ext.define('TestFolderNavigator', {
 
             }, this.getGridStoreConfig())).then({
                 success: function (treeGridStore) {
-                    this.logger.log(treeGridStore);
                     treeGridStore.enableHierarchy = true;
                     //treeGridStore.on('load', this.publishComponentReady, this, { single: true });
                     return { gridStore: treeGridStore };
@@ -114,14 +113,14 @@ Ext.define('TestFolderNavigator', {
 //                    context: this.getContext()
 //                    
 //                },
-//                {
-//                    ptype: 'rallygridboardcustomfiltercontrol',
-//                    filterControlConfig: {
-//                        modelNames: ['TestCase'],
-//                        stateful: false
-//                    },
-//                    showOwnerFilter: true
-//                },
+                {
+                    ptype: 'tsgridboardcustomtestcasefiltercontrol',
+                    filterControlConfig: {
+                        modelNames: ['TestCase'],
+                        stateful: false
+                    },
+                    showOwnerFilter: false
+                },
                 {
                     ptype: 'tsgridboardsearchcontrol',
                     searchControlConfig: Ext.Object.merge({},this.getSearchControlConfig())

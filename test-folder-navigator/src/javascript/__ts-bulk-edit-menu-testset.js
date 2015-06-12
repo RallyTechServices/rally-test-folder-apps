@@ -15,7 +15,15 @@ Ext.define('Rally.ui.menu.bulk.TestSet', {
 
         prepareRecords: function(records, args) {
             return records;
-        }      
+        },
+        
+        /**
+         * 
+         * @cfg {Rally.data.wsapi.TreeStore}
+         * 
+         *  The store on the underlying grid
+         */
+        baseStore: null
     },     
 
     _onMenuItemChosen: function() {
@@ -37,6 +45,10 @@ Ext.define('Rally.ui.menu.bulk.TestSet', {
             return;
         }
         var records = this.records;
+        
+        if ( records.length > 0 ) { 
+            this.baseStore = records[0].store;
+        }
         
         var promises = [];
         Ext.Array.each( records, function(record){
@@ -112,10 +124,17 @@ Ext.define('Rally.ui.menu.bulk.TestSet', {
     },
     _getTestCasesInFolder: function(record) {
         var deferred = Ext.create('Deft.Deferred');
+        
+        var filters = [{property:'TestFolder.ObjectID',value:record.get('ObjectID')}];
+        
+        if ( this.baseStore && ! Ext.isEmpty( this.baseStore.extra_filter_by_model['testcase'] ) ) {
+            filters = Ext.Array.merge(filters, this.baseStore.extra_filter_by_model['testcase'] );
+        }
+        
         Ext.create('Rally.data.wsapi.Store',{
             model: 'TestCase',
             autoLoad: true,
-            filters: [{property:'TestFolder.ObjectID',value:record.get('ObjectID')}],
+            filters: filters,
             sorters: [{property:'DragAndDropRank',direction:'ASC'}],
             limit: 'Infinity',
             listeners: {

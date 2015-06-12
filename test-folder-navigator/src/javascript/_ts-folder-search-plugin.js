@@ -41,6 +41,7 @@ Ext.define('Rally.technicalservices.GridBoardSearchControl', {
                 Ext.merge({
                     xtype: 'rallybutton',
                     text: '<span class="icon-search ">&nbsp;</span>',
+                    itemId: 'search_button',
                     cls: 'secondary rly-small',
                     listeners: {
                         scope: me,
@@ -92,8 +93,30 @@ Ext.define('Rally.technicalservices.GridBoardSearchControl', {
         console.log("found: ", record);
         if ( record ) {
             this.gridboard.fireEvent('recordSelect', record);
+            this.indicateActiveFilterPresent();
         }else {
+            this.indicateNoActiveFilterPresent();
             this.gridboard.fireEvent('clearSearch');
+        }
+    },
+
+    indicateActiveFilterPresent: function() {
+        console.log('this:',this);
+        var button = this.searchButton;
+        
+        if (!button.hasCls('primary')) {
+            button.addCls('primary');
+            button.removeCls('secondary');
+        }
+    },
+
+    indicateNoActiveFilterPresent: function() {
+        console.log('this:',this);
+        var button = this.searchButton;
+
+        if (!button.hasCls('secondary')) {
+            button.addCls('secondary');
+            button.removeCls('primary');
         }
     }
 });

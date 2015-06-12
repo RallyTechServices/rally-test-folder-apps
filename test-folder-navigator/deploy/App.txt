@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Navigator</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Jun 11 2015 17:19:46 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Jun 11 2015 19:52:22 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Jun 11 2015 17:19:46 GMT-0700 (PDT)";
-        var CHECKSUM = 80092267871;
+        var APP_BUILD_DATE = "Thu Jun 11 2015 19:52:22 GMT-0700 (PDT)";
+        var CHECKSUM = 93291537648;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -32,7 +32,15 @@ Ext.define('Rally.ui.menu.bulk.TestSet', {
 
         prepareRecords: function(records, args) {
             return records;
-        }      
+        },
+        
+        /**
+         * 
+         * @cfg {Rally.data.wsapi.TreeStore}
+         * 
+         *  The store on the underlying grid
+         */
+        baseStore: null
     },     
 
     _onMenuItemChosen: function() {
@@ -54,6 +62,10 @@ Ext.define('Rally.ui.menu.bulk.TestSet', {
             return;
         }
         var records = this.records;
+        
+        if ( records.length > 0 ) { 
+            this.baseStore = records[0].store;
+        }
         
         var promises = [];
         Ext.Array.each( records, function(record){
@@ -129,10 +141,17 @@ Ext.define('Rally.ui.menu.bulk.TestSet', {
     },
     _getTestCasesInFolder: function(record) {
         var deferred = Ext.create('Deft.Deferred');
+        
+        var filters = [{property:'TestFolder.ObjectID',value:record.get('ObjectID')}];
+        
+        if ( this.baseStore && ! Ext.isEmpty( this.baseStore.extra_filter_by_model['testcase'] ) ) {
+            filters = Ext.Array.merge(filters, this.baseStore.extra_filter_by_model['testcase'] );
+        }
+        
         Ext.create('Rally.data.wsapi.Store',{
             model: 'TestCase',
             autoLoad: true,
-            filters: [{property:'TestFolder.ObjectID',value:record.get('ObjectID')}],
+            filters: filters,
             sorters: [{property:'DragAndDropRank',direction:'ASC'}],
             limit: 'Infinity',
             listeners: {
@@ -374,7 +393,7 @@ Ext.override(Rally.ui.grid.CheckboxModel,{
     _recordIsSelectable: function(record) {
         return true;
     }
-            
+
 });
 
 Ext.override(Rally.ui.menu.bulk.RecordMenu,{
@@ -411,14 +430,28 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
     _applyGridFilters: function(grid, filterObj) {
         var me = this;
         
+        var filter_for_testcase = false;
+        
         console.log('_applyGridFilters', filterObj);
         
         if (!_.isEmpty(filterObj.types)) {
-            grid.store.parentTypes = filterObj.types;
+            //grid.store.parentTypes = filterObj.types;
+            if ( filterObj.types.length == 1 && filterObj.types[0] == "testcase" ) {
+                grid.store.extra_filter_by_model["testcase"] = filterObj.filters;
+                filter_for_testcase = true;
+            }
         }
-
+        
+        console.log('filter for testcase:', filter_for_testcase);
+        
         grid.store.clearFilter(true);
-        if ( this.expandTo !== null ) {
+        var filters = this._getConfiguredFilters(filterObj.filters || [], filterObj.types || []);
+        
+        if ( filter_for_testcase ) {
+            filters = this._getConfiguredFilters([],filterObj.types || []);
+        }
+        
+        if ( this.expandTo !== null && this.expandTo !== undefined ) {
             console.log("Expand To: ", this.expandTo);
             
             grid.store.on('load', function() { 
@@ -427,7 +460,12 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
                 
             }, this, { single: true });
         }
-        grid.store.filter(this._getConfiguredFilters(filterObj.filters || [], filterObj.types || []));
+        
+        if ( ! Ext.isEmpty(this.searchFilter) ) {
+            filters = Ext.Array.merge(this.searchFilter);
+        }
+        console.log("Using filters: ", filters);
+        grid.store.filter(filters);
         
     },
     
@@ -468,7 +506,6 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
                     callback: function(record) {
                         me._buildAncestorArray(record,[record]).then({
                             success: function(records) {
-                                console.log("array:",records);
                                 me._expandNode(records);
                             },
                             failure: function(msg) {
@@ -517,14 +554,14 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
                 
                 var record_id = top_record.get('ObjectID');
                 
-                var filter = Ext.create('Rally.data.wsapi.Filter',{
+                this.searchFilter = [ Ext.create('Rally.data.wsapi.Filter',{
                     property: 'ObjectID', 
                     value: record_id
-                });
+                }) ];
                 
                 this.expandTo = ancestor_array[0];
                 
-                this.applyCustomFilter({ filters: filter });
+                this.applyCustomFilter({ filters: [] });
                 this.setLoading(false);
                 return;
             }
@@ -603,6 +640,7 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
         var filter = this.gridConfig.storeConfig.filters;
         
         this.expandTo = null;
+        this.searchFilter = null;
         
         this.applyCustomFilter({ filters: filter });
         return;
@@ -610,8 +648,6 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
     
     _addGrid: function() {
         var grid = this.add(this._getGridConfig());
-
-        console.log(grid);
         
         this.mon(grid, 'afterproxyload', this._onGridOrBoardLoad, this);
 
@@ -811,6 +847,8 @@ Ext.override(Ext.data.TreeStore,{
         options = options || {};
         options.params = options.params || {};
 
+        console.log('treestore load', options);
+        
         var me = this,
             node = options.node || me.tree.getRootNode(),
             callback = options.callback,
@@ -881,6 +919,9 @@ Ext.override(Ext.data.TreeStore,{
             }
             me.loading = true;
 
+            console.log('models:', me.models);
+            console.log('root:', me.isRootNode(options.node));
+            
             if ( !me.isRootNode(options.node) && me.models && me.models.length == 2 ) {
                 /* If we have two models and they 
                  * don't both descend from the artifact 
@@ -902,9 +943,10 @@ Ext.override(Ext.data.TreeStore,{
                         var deferred = Ext.create('Deft.Deferred');
                         var model = me.models[1];
                         
-                        o1.filters = me.filter_by_model[model.typePath];
                         o1.sorters = me.sorters_by_model[model.typePath];
                         
+                        o1.filters = me._getFilterByModel(model.typePath);
+
                         console.log('o1',model.typePath, o1);
                         
                         model.getProxy().read(o1,function(op){
@@ -916,8 +958,9 @@ Ext.override(Ext.data.TreeStore,{
                     function() {
                         var deferred = Ext.create('Deft.Deferred');
                         var model = me.models[0];
-                        
-                        o2.filters = me.filter_by_model[model.typePath];
+                                                
+                        o2.filters = me._getFilterByModel(model.typePath);
+
                         o2.sorters = me.sorters_by_model[model.typePath];
                     
                         console.log('o2:',model.typePath, o2);
@@ -954,12 +997,27 @@ Ext.override(Ext.data.TreeStore,{
         }
 
         return me;
+    },
+    
+    _getFilterByModel: function(model_path) {
+        var extra_filter = this.extra_filter_by_model[model_path];
+        var base_filter = this.filter_by_model[model_path];
+        console.log('_getFilterByModel', model_path, base_filter, extra_filter);
+        
+        var composite_filter = base_filter;
+        if ( ! Ext.isEmpty( extra_filter ) ) {
+            composite_filter = Ext.Array.merge(base_filter, extra_filter);
+        }
+        console.log(' - returning:', composite_filter);
+        
+        return composite_filter;
     }
 });
 
 Ext.override(Rally.data.wsapi.TreeStore,{
     
     load: function(options) {
+        console.log("wsapi treestore load",options);
         this.recordLoadBegin({description: 'tree store load', component: this.requester});
         
         this._hasErrors = false;
@@ -1024,15 +1082,18 @@ Ext.override(Rally.data.wsapi.TreeStore,{
         }
     },
     
+    extra_filter_by_model: {},
+    
     filter_by_model: {},
     
     sorters_by_model: {
         'testfolder': [{property:'ObjectID'}],
-        'testcase': [{property:'DragAndDropRank'}]
+        'testcase':   [{property:'DragAndDropRank'}]
     
     },
     
     _getChildNodeFilters: function(node) {
+        console.log("Getting child node filters",node);
         
         var parentType = node.self.typePath,
             childTypes = this._getChildTypePaths([parentType]),
@@ -1249,6 +1310,75 @@ Ext.define('Rally.technicalservices.dialog.BulkAddToTestSetDialog',{
         ]
     }
     
+});
+Ext.define('Rally.technicalservices.plugin.GridBoardCustomTestCaseFilterControl',{
+    alias: 'plugin.tsgridboardcustomtestcasefiltercontrol',
+    extend: 'Rally.ui.gridboard.plugin.GridBoardCustomFilterControl',
+    
+    getControlCmpConfig: function() {
+        var config = Ext.merge({
+            xtype: 'container',
+            width: 72,
+            layout: 'hbox',
+            items: [
+                Ext.merge({
+                    xtype: 'rallycustomfilterbutton',
+                    context: this.cmp.getContext(),
+                    listeners: {
+                        customfilter: {
+                            fn: this._onFilterButtonStateAvailable,
+                            single: true,
+                            scope: this
+                        }
+                    },
+                    toolTipConfig: {
+                        html: 'TestCase Filter',
+                        anchor: 'top',
+                        mouseOffset: [-9, -2]
+                    },
+                    margin: '3 9 3 30'
+                }, this.filterControlConfig)
+            ]
+        }, this.containerConfig);
+
+        if (this.showOwnerFilter) {
+            config.width += 210;
+
+            config.items.push(Ext.merge({
+                xtype: 'rallyownerfilter',
+                margin: '3px 10px 0px 0px',
+                listConfig: {
+                    width: 200
+                },
+                context: this.cmp.getContext(),
+                width: 200,
+                clearFilterText: '-- Clear Filter --',
+                listeners: {
+                    initalvalueset: {
+                        fn: this._onOwnerFilterStateAvailable,
+                        single: true
+                    },
+                    select: this._applyFilter,
+                    scope: this
+                }
+            }, this.ownerFilterControlConfig));
+        }
+
+        return config;
+    },
+    
+    _applyFilter: function() {
+        var filters = _.compact(Ext.Array.merge(this.filterButton.getFilters(), this.ownerFilter && this.ownerFilter.getFilter())),
+            modifiedFilters = Rally.data.wsapi.filter.FilterModificationator.modifyFilters(filters, this.filterChildren),
+            filterArgs = {
+                types: this.filterButton.getTypes(),
+                filters: modifiedFilters
+                
+            };
+        console.log('filter sends: ', filterArgs);
+            
+        this.cmp.applyCustomFilter(filterArgs);
+    }
 });
 Ext.define('Rally.technicalservices.TFParentChildMapper',{
     extend: 'Rally.data.wsapi.ParentChildMapper',
@@ -1800,6 +1930,7 @@ Ext.define('Rally.technicalservices.GridBoardSearchControl', {
                 Ext.merge({
                     xtype: 'rallybutton',
                     text: '<span class="icon-search ">&nbsp;</span>',
+                    itemId: 'search_button',
                     cls: 'secondary rly-small',
                     listeners: {
                         scope: me,
@@ -1851,8 +1982,30 @@ Ext.define('Rally.technicalservices.GridBoardSearchControl', {
         console.log("found: ", record);
         if ( record ) {
             this.gridboard.fireEvent('recordSelect', record);
+            this.indicateActiveFilterPresent();
         }else {
+            this.indicateNoActiveFilterPresent();
             this.gridboard.fireEvent('clearSearch');
+        }
+    },
+
+    indicateActiveFilterPresent: function() {
+        console.log('this:',this);
+        var button = this.searchButton;
+        
+        if (!button.hasCls('primary')) {
+            button.addCls('primary');
+            button.removeCls('secondary');
+        }
+    },
+
+    indicateNoActiveFilterPresent: function() {
+        console.log('this:',this);
+        var button = this.searchButton;
+
+        if (!button.hasCls('secondary')) {
+            button.addCls('secondary');
+            button.removeCls('primary');
         }
     }
 });
@@ -1933,7 +2086,6 @@ Ext.define('TestFolderNavigator', {
 
             }, this.getGridStoreConfig())).then({
                 success: function (treeGridStore) {
-                    this.logger.log(treeGridStore);
                     treeGridStore.enableHierarchy = true;
                     //treeGridStore.on('load', this.publishComponentReady, this, { single: true });
                     return { gridStore: treeGridStore };
@@ -1973,14 +2125,14 @@ Ext.define('TestFolderNavigator', {
 //                    context: this.getContext()
 //                    
 //                },
-//                {
-//                    ptype: 'rallygridboardcustomfiltercontrol',
-//                    filterControlConfig: {
-//                        modelNames: ['TestCase'],
-//                        stateful: false
-//                    },
-//                    showOwnerFilter: true
-//                },
+                {
+                    ptype: 'tsgridboardcustomtestcasefiltercontrol',
+                    filterControlConfig: {
+                        modelNames: ['TestCase'],
+                        stateful: false
+                    },
+                    showOwnerFilter: false
+                },
                 {
                     ptype: 'tsgridboardsearchcontrol',
                     searchControlConfig: Ext.Object.merge({},this.getSearchControlConfig())

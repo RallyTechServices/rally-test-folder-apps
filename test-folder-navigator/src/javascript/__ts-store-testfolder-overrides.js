@@ -3,6 +3,8 @@ Ext.override(Ext.data.TreeStore,{
         options = options || {};
         options.params = options.params || {};
 
+        console.log('treestore load', options);
+        
         var me = this,
             node = options.node || me.tree.getRootNode(),
             callback = options.callback,
@@ -73,6 +75,9 @@ Ext.override(Ext.data.TreeStore,{
             }
             me.loading = true;
 
+            console.log('models:', me.models);
+            console.log('root:', me.isRootNode(options.node));
+            
             if ( !me.isRootNode(options.node) && me.models && me.models.length == 2 ) {
                 /* If we have two models and they 
                  * don't both descend from the artifact 
@@ -94,9 +99,10 @@ Ext.override(Ext.data.TreeStore,{
                         var deferred = Ext.create('Deft.Deferred');
                         var model = me.models[1];
                         
-                        o1.filters = me.filter_by_model[model.typePath];
                         o1.sorters = me.sorters_by_model[model.typePath];
                         
+                        o1.filters = me._getFilterByModel(model.typePath);
+
                         console.log('o1',model.typePath, o1);
                         
                         model.getProxy().read(o1,function(op){
@@ -108,8 +114,9 @@ Ext.override(Ext.data.TreeStore,{
                     function() {
                         var deferred = Ext.create('Deft.Deferred');
                         var model = me.models[0];
-                        
-                        o2.filters = me.filter_by_model[model.typePath];
+                                                
+                        o2.filters = me._getFilterByModel(model.typePath);
+
                         o2.sorters = me.sorters_by_model[model.typePath];
                     
                         console.log('o2:',model.typePath, o2);
@@ -146,12 +153,27 @@ Ext.override(Ext.data.TreeStore,{
         }
 
         return me;
+    },
+    
+    _getFilterByModel: function(model_path) {
+        var extra_filter = this.extra_filter_by_model[model_path];
+        var base_filter = this.filter_by_model[model_path];
+        console.log('_getFilterByModel', model_path, base_filter, extra_filter);
+        
+        var composite_filter = base_filter;
+        if ( ! Ext.isEmpty( extra_filter ) ) {
+            composite_filter = Ext.Array.merge(base_filter, extra_filter);
+        }
+        console.log(' - returning:', composite_filter);
+        
+        return composite_filter;
     }
 });
 
 Ext.override(Rally.data.wsapi.TreeStore,{
     
     load: function(options) {
+        console.log("wsapi treestore load",options);
         this.recordLoadBegin({description: 'tree store load', component: this.requester});
         
         this._hasErrors = false;
@@ -216,15 +238,18 @@ Ext.override(Rally.data.wsapi.TreeStore,{
         }
     },
     
+    extra_filter_by_model: {},
+    
     filter_by_model: {},
     
     sorters_by_model: {
         'testfolder': [{property:'ObjectID'}],
-        'testcase': [{property:'DragAndDropRank'}]
+        'testcase':   [{property:'DragAndDropRank'}]
     
     },
     
     _getChildNodeFilters: function(node) {
+        console.log("Getting child node filters",node);
         
         var parentType = node.self.typePath,
             childTypes = this._getChildTypePaths([parentType]),

@@ -3,7 +3,7 @@ Ext.override(Rally.ui.grid.CheckboxModel,{
     _recordIsSelectable: function(record) {
         return true;
     }
-            
+
 });
 
 Ext.override(Rally.ui.menu.bulk.RecordMenu,{
@@ -40,14 +40,28 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
     _applyGridFilters: function(grid, filterObj) {
         var me = this;
         
+        var filter_for_testcase = false;
+        
         console.log('_applyGridFilters', filterObj);
         
         if (!_.isEmpty(filterObj.types)) {
-            grid.store.parentTypes = filterObj.types;
+            //grid.store.parentTypes = filterObj.types;
+            if ( filterObj.types.length == 1 && filterObj.types[0] == "testcase" ) {
+                grid.store.extra_filter_by_model["testcase"] = filterObj.filters;
+                filter_for_testcase = true;
+            }
         }
-
+        
+        console.log('filter for testcase:', filter_for_testcase);
+        
         grid.store.clearFilter(true);
-        if ( this.expandTo !== null ) {
+        var filters = this._getConfiguredFilters(filterObj.filters || [], filterObj.types || []);
+        
+        if ( filter_for_testcase ) {
+            filters = this._getConfiguredFilters([],filterObj.types || []);
+        }
+        
+        if ( this.expandTo !== null && this.expandTo !== undefined ) {
             console.log("Expand To: ", this.expandTo);
             
             grid.store.on('load', function() { 
@@ -56,7 +70,12 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
                 
             }, this, { single: true });
         }
-        grid.store.filter(this._getConfiguredFilters(filterObj.filters || [], filterObj.types || []));
+        
+        if ( ! Ext.isEmpty(this.searchFilter) ) {
+            filters = Ext.Array.merge(this.searchFilter);
+        }
+        console.log("Using filters: ", filters);
+        grid.store.filter(filters);
         
     },
     
@@ -97,7 +116,6 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
                     callback: function(record) {
                         me._buildAncestorArray(record,[record]).then({
                             success: function(records) {
-                                console.log("array:",records);
                                 me._expandNode(records);
                             },
                             failure: function(msg) {
@@ -146,14 +164,14 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
                 
                 var record_id = top_record.get('ObjectID');
                 
-                var filter = Ext.create('Rally.data.wsapi.Filter',{
+                this.searchFilter = [ Ext.create('Rally.data.wsapi.Filter',{
                     property: 'ObjectID', 
                     value: record_id
-                });
+                }) ];
                 
                 this.expandTo = ancestor_array[0];
                 
-                this.applyCustomFilter({ filters: filter });
+                this.applyCustomFilter({ filters: [] });
                 this.setLoading(false);
                 return;
             }
@@ -232,6 +250,7 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
         var filter = this.gridConfig.storeConfig.filters;
         
         this.expandTo = null;
+        this.searchFilter = null;
         
         this.applyCustomFilter({ filters: filter });
         return;
@@ -239,8 +258,6 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
     
     _addGrid: function() {
         var grid = this.add(this._getGridConfig());
-
-        console.log(grid);
         
         this.mon(grid, 'afterproxyload', this._onGridOrBoardLoad, this);
 
