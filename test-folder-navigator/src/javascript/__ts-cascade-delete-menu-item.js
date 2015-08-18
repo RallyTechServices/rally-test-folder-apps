@@ -188,9 +188,15 @@ Ext.define('Rally.technicalservices.ui.menu.item.CascadeDeleteMenuItem', {
     },
     
     _launchConfirmDialog: function() {
+        console.log(this.record);
+        var record_display_string = "<b>" + this.record.get('FormattedID') + ": " + this.record.get('Name') + "</b>";
+        
         return Ext.create('Rally.ui.dialog.ConfirmDialog', {
             title: 'Cascade Delete',
-            message: "Are you sure? <br/><br/>This will delete <em>all of</em> this folder's descendant folders and test cases, regardless of your filter setting.<br/><br/>  THERE IS NO UNDO.",
+            message: "Are you sure? <br/><br/>This will delete <em>all of</em> this folder's descendant folders and test cases, " +
+                    "regardless of your filter setting.<br/><br/>  " +
+                    "The chosen folder is: " + record_display_string + "<br/><br/>" + 
+                    "THERE IS NO UNDO.",
             confirmLabel: 'OK'
         });
     }

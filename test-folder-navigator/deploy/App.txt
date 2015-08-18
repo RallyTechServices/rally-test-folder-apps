@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Navigator</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Jun 11 2015 19:52:22 GMT-0700 (PDT) -->
+    <!--  Build Date: Mon Aug 17 2015 20:33:02 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Jun 11 2015 19:52:22 GMT-0700 (PDT)";
-        var CHECKSUM = 93291537648;
+        var APP_BUILD_DATE = "Mon Aug 17 2015 20:33:02 GMT-0700 (PDT)";
+        var CHECKSUM = 94060697118;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -381,9 +381,15 @@ Ext.define('Rally.technicalservices.ui.menu.item.CascadeDeleteMenuItem', {
     },
     
     _launchConfirmDialog: function() {
+        console.log(this.record);
+        var record_display_string = "<b>" + this.record.get('FormattedID') + ": " + this.record.get('Name') + "</b>";
+        
         return Ext.create('Rally.ui.dialog.ConfirmDialog', {
             title: 'Cascade Delete',
-            message: "Are you sure? <br/><br/>This will delete <em>all of</em> this folder's descendant folders and test cases, regardless of your filter setting.<br/><br/>  THERE IS NO UNDO.",
+            message: "Are you sure? <br/><br/>This will delete <em>all of</em> this folder's descendant folders and test cases, " +
+                    "regardless of your filter setting.<br/><br/>  " +
+                    "The chosen folder is: " + record_display_string + "<br/><br/>" + 
+                    "THERE IS NO UNDO.",
             confirmLabel: 'OK'
         });
     }
