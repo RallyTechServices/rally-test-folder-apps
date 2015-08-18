@@ -3,11 +3,11 @@
 <head>
     <title>Test Folder Navigator</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Aug 17 2015 20:33:02 GMT-0700 (PDT) -->
+    <!--  Build Date: Mon Aug 17 2015 20:45:20 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Aug 17 2015 20:33:02 GMT-0700 (PDT)";
-        var CHECKSUM = 94060697118;
+        var APP_BUILD_DATE = "Mon Aug 17 2015 20:45:20 GMT-0700 (PDT)";
+        var CHECKSUM = 94453181078;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -2081,7 +2081,7 @@ Ext.define('TestFolderNavigator', {
                 childPageSizeEnabled: true,
                 mapper: Ext.create('Rally.technicalservices.TFParentChildMapper'),
                 enableHierarchy: true,
-                fetch: _.union(['Workspace'], this.columnNames),
+                fetch: _.union(['Workspace','Name'], this.columnNames),
                 models: _.clone(this.models),
                 pageSize: 25,
                 remoteSort: true,
@@ -2154,6 +2154,10 @@ Ext.define('TestFolderNavigator', {
 
         getSearchControlConfig: function() {
             return {};
+        },
+        
+        getColumnCfgs: function() {
+            return _.isEmpty(this.columnNames) ? ['Name']: this.columnNames;
         },
         
         getGridConfig: function (options) {

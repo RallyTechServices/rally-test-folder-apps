@@ -63,7 +63,7 @@ Ext.define('TestFolderNavigator', {
                 childPageSizeEnabled: true,
                 mapper: Ext.create('Rally.technicalservices.TFParentChildMapper'),
                 enableHierarchy: true,
-                fetch: _.union(['Workspace'], this.columnNames),
+                fetch: _.union(['Workspace','Name'], this.columnNames),
                 models: _.clone(this.models),
                 pageSize: 25,
                 remoteSort: true,
@@ -136,6 +136,10 @@ Ext.define('TestFolderNavigator', {
 
         getSearchControlConfig: function() {
             return {};
+        },
+        
+        getColumnCfgs: function() {
+            return _.isEmpty(this.columnNames) ? ['Name']: this.columnNames;
         },
         
         getGridConfig: function (options) {
