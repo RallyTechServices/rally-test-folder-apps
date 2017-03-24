@@ -1,5 +1,8 @@
 #Test Folder Navigator
 
+![screenshot](./images/screenshot.png "This is an example")
+
+
 Buttons:
 * Blue backgrounds on the filter and search buttons indicate that they are engaged
 * Filter (left): For folders that are showing, display only test cases that match the filter.  When the filter is engaged, selecting a folder for adding to test set will only add test cases that match the filter.

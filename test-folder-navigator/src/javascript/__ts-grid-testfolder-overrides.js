@@ -135,15 +135,18 @@ Ext.override(Rally.ui.gridboard.GridBoard,{
    applyCustomFilter: function(filterObj) {
         console.log('applyCustomFilter',filterObj);
         
-        var gridOrBoard = this.getGridOrBoard();
-
-        this.currentCustomFilter = filterObj;
-
-        if (gridOrBoard) {
-            if (this.getToggleState() === 'board') {
-                this._applyBoardFilters(gridOrBoard, filterObj);
-            } else {
-                this._applyGridFilters(gridOrBoard, filterObj);
+        // add if statement to keep from getting duplicates
+        if ( filterObj.types && filterObj.types.length > 0 ) {
+            var gridOrBoard = this.getGridOrBoard();
+    
+            this.currentCustomFilter = filterObj;
+    
+            if (gridOrBoard) {
+                if (this.getToggleState() === 'board') {
+                    this._applyBoardFilters(gridOrBoard, filterObj);
+                } else {
+                    this._applyGridFilters(gridOrBoard, filterObj);
+                }
             }
         }
     },

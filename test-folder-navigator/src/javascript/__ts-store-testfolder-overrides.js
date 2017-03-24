@@ -53,8 +53,6 @@ Ext.override(Ext.data.TreeStore,{
             sorters: me.getSorters(),
             node: options.node || node
         }, options);
-
-        console.log('sorters:', me.getSorters());
         
         me.lastOptions = options;
 

@@ -1,7 +1,6 @@
 {
-    "name": "Test Folder Navigator",
+    "name": "TestFolderNavigator",
+    "sdk": "2.1",
     "className": "TestFolderNavigator",
-    "server": "https://demo-services1.rallydev.com",
-    "sdk": "2.0",
-    "apiKey": "_PUT_APIKEY_HERE_"
+    "story": "US1235"
 }
