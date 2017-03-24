@@ -1,7 +1,6 @@
 #Test Folder Navigator
 
-![screenshot](./images/screenshot.png "This is an example")
-
+![folders](./images/screenshot.png "screenshot")
 
 Buttons:
 * Blue backgrounds on the filter and search buttons indicate that they are engaged
